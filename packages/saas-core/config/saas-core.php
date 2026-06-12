@@ -130,6 +130,15 @@ return [
         // Il Global Scope Eloquent è il primo layer (applicazione).
         // RLS è il secondo layer (database): blocca accessi anche in caso di bug PHP.
         'rls' => true,
+
+        // Giorni di validità di un invito al tenant.
+        'invite_ttl_days' => 7,
+
+        // Sottodomini riservati all'infrastruttura: un tenant non può
+        // registrarsi con questi slug (confliggerebbero con i servizi).
+        'reserved_slugs' => [
+            'www', 'api', 'app', 'admin', 'mail', 'smtp', 'ftp', 'staging', 'dev', 'test',
+        ],
     ],
 
     // -------------------------------------------------------------------------
@@ -142,12 +151,20 @@ return [
         // Ogni SaaS personalizza questa lista con i propri ruoli.
         // Esempio NaviLedger: ['owner', 'captain', 'crew', 'supplier', 'admin']
         'roles' => [
+            'owner',
             'admin',
             'user',
         ],
 
         // Ruolo assegnato automaticamente ai nuovi utenti al momento della registrazione.
         'default_role' => 'user',
+
+        // Ruolo assegnato a chi CREA il tenant (self-signup con "company").
+        'owner_role' => 'owner',
+
+        // Ruoli assegnabili tramite invito. owner escluso di proposito:
+        // l'owner è solo il fondatore del tenant.
+        'invitable_roles' => ['admin', 'user'],
 
         // Ruoli considerati "admin del tenant" da SaasPolicy::isTenantAdmin().
         // Usato per autorizzare operazioni riservate (gestione utenti, billing, ecc.).

@@ -11,6 +11,7 @@ use LaravelWebauthn\Facades\Webauthn;
 use LaravelWebauthn\Models\WebauthnKey;
 use RuntimeException;
 use SaaS\Core\Auth\Mobile\DeviceTokenService;
+use SaaS\Core\Tenancy\TenantOnboarding;
 
 /**
  * PasskeyRegistrationController
@@ -41,7 +42,8 @@ use SaaS\Core\Auth\Mobile\DeviceTokenService;
 class PasskeyRegistrationController extends Controller
 {
     public function __construct(
-        private readonly DeviceTokenService $deviceTokenService
+        private readonly DeviceTokenService $deviceTokenService,
+        private readonly TenantOnboarding $onboarding,
     ) {}
 
     /**
@@ -66,13 +68,34 @@ class PasskeyRegistrationController extends Controller
     public function options(Request $request): JsonResponse
     {
         $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
+            'name'    => ['required', 'string', 'max:255'],
+            'email'   => ['required', 'email', 'max:255'],
+            // ONBOARDING TENANT (entrambi opzionali — retrocompatibile):
+            //   company      → self-signup: crea il tenant, l'utente diventa owner
+            //   invite_token → entra in un tenant esistente con il ruolo dell'invito
+            // Nessuno dei due → utente senza tenant (può crearlo/riceverlo dopo).
+            'company'      => ['sometimes', 'nullable', 'string', 'max:255'],
+            'invite_token' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         $userModel = config('auth.providers.users.model');
         $email     = $request->input('email');
         $name      = $request->input('name');
+
+        // Invito: deve esistere, essere pendente e combaciare con l'email.
+        // Validato QUI (step 1) per dare errore subito, prima della biometrica.
+        $invite = null;
+        if ($request->filled('invite_token')) {
+            $invite = $this->onboarding->findPendingInvite($request->input('invite_token'));
+
+            if (! $invite) {
+                return response()->json(['message' => 'Invito non valido o scaduto.'], 422);
+            }
+
+            if (strcasecmp($invite->email, $email) !== 0) {
+                return response()->json(['message' => 'L\'invito è destinato a un altro indirizzo email.'], 422);
+            }
+        }
 
         // lockForUpdate() dentro la transazione evita la race condition:
         // due richieste concorrenti con la stessa email non possono entrambe
@@ -124,8 +147,15 @@ class PasskeyRegistrationController extends Controller
             return response()->json(['message' => 'Impossibile preparare la registrazione.'], 500);
         }
 
-        // Salviamo l'ID utente in sessione per il secondo step
-        session(['passkey_register_user_id' => $user->id]);
+        // Salviamo l'ID utente in sessione per il secondo step.
+        // company/invite restano in sessione: il tenant viene creato SOLO
+        // a registrazione completata (step 2) — niente tenant orfani se
+        // l'utente annulla la biometrica.
+        session([
+            'passkey_register_user_id'   => $user->id,
+            'passkey_register_company'   => $request->input('company'),
+            'passkey_register_invite_id' => $invite?->id,
+        ]);
 
         return response()->json($publicKeyOptions);
     }
@@ -177,8 +207,25 @@ class PasskeyRegistrationController extends Controller
             PasskeyDeviceNames::autoName($latestKey, $request->userAgent() ?? '');
         }
 
+        // ONBOARDING TENANT — eseguito solo a passkey verificata:
+        //   invito  → aggancia al tenant esistente con il ruolo dell'invito
+        //   company → crea il tenant, l'utente è owner
+        //   nessuno → utente senza tenant (self-signup rimandato)
+        $inviteId = session('passkey_register_invite_id');
+        $company  = session('passkey_register_company');
+
+        if ($inviteId) {
+            $invite = \SaaS\Core\Tenancy\Models\TenantInvite::find($inviteId);
+            if ($invite && $invite->isPending()) {
+                $this->onboarding->acceptInvite($invite, $user);
+            }
+        } elseif ($company) {
+            $tenant = $this->onboarding->createTenant($company);
+            $this->onboarding->attachOwner($user, $tenant);
+        }
+
         // Pulisce la sessione di registrazione
-        session()->forget('passkey_register_user_id');
+        session()->forget(['passkey_register_user_id', 'passkey_register_company', 'passkey_register_invite_id']);
 
         // Autentica l'utente nella sessione web
         Auth::login($user);
@@ -198,9 +245,25 @@ class PasskeyRegistrationController extends Controller
     public function optionsMobile(Request $request): JsonResponse
     {
         $request->validate([
-            'name'  => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255'],
+            'name'    => ['required', 'string', 'max:255'],
+            'email'   => ['required', 'email', 'max:255'],
+            // Vedi options(): flusso stateless — il client rimanda gli stessi
+            // valori nello step 2 (registerMobile), qui li validiamo soltanto.
+            'company'      => ['sometimes', 'nullable', 'string', 'max:255'],
+            'invite_token' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
+
+        if ($request->filled('invite_token')) {
+            $invite = $this->onboarding->findPendingInvite($request->input('invite_token'));
+
+            if (! $invite) {
+                return response()->json(['message' => 'Invito non valido o scaduto.'], 422);
+            }
+
+            if (strcasecmp($invite->email, $request->input('email')) !== 0) {
+                return response()->json(['message' => 'L\'invito è destinato a un altro indirizzo email.'], 422);
+            }
+        }
 
         $userModel = config('auth.providers.users.model');
         $email     = $request->input('email');
@@ -260,6 +323,8 @@ class PasskeyRegistrationController extends Controller
             'response'  => ['required', 'array'],
             'device_id' => ['required', 'string', 'max:255'],
             'key_name'  => ['sometimes', 'string', 'max:255'],
+            'company'      => ['sometimes', 'nullable', 'string', 'max:255'],
+            'invite_token' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
         $userModel = config('auth.providers.users.model');
@@ -284,6 +349,18 @@ class PasskeyRegistrationController extends Controller
         $latestKey = WebauthnKey::where('user_id', $user->id)->latest('created_at')->first();
         if ($latestKey) {
             PasskeyDeviceNames::autoName($latestKey, $request->userAgent() ?? '');
+        }
+
+        // ONBOARDING TENANT (stateless: valori rimandati dal client nello step 2).
+        // L'email dell'invito vince sempre sul campo email della request.
+        if ($request->filled('invite_token')) {
+            $invite = $this->onboarding->findPendingInvite($request->input('invite_token'));
+            if ($invite && strcasecmp($invite->email, $user->email) === 0) {
+                $this->onboarding->acceptInvite($invite, $user);
+            }
+        } elseif ($request->filled('company') && ! $user->tenant_id) {
+            $tenant = $this->onboarding->createTenant($request->input('company'));
+            $this->onboarding->attachOwner($user, $tenant);
         }
 
         return response()->json(

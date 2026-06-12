@@ -236,5 +236,8 @@ class SaasCoreServiceProvider extends ServiceProvider
 
         // Le route di recovery si caricano sempre — chiunque può perdere un device.
         $this->loadRoutesFrom(__DIR__ . '/../routes/recovery.php');
+
+        // Route tenancy (gestione inviti al tenant).
+        $this->loadRoutesFrom(__DIR__ . '/../routes/tenancy.php');
     }
 }

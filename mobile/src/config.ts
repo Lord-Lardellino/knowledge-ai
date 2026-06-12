@@ -1,2 +1,2 @@
-export const defaultApiUrl = 'http://10.0.2.2:8013';
+export const defaultApiUrl = 'https://sapio.144-91-101-42.sslip.io';
 export const defaultTenantId = 'acme';

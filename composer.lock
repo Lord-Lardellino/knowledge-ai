@@ -4170,11 +4170,11 @@
         },
         {
             "name": "saas/core",
-            "version": "dev-main",
+            "version": "dev-feature/knowledge-base",
             "dist": {
                 "type": "path",
                 "url": "packages/saas-core",
-                "reference": "9522dd18e2dc654150874f107b8fa0e52479b568"
+                "reference": "da66424ae3d1093dd8086a8c2b66ddfc703cd015"
             },
             "require": {
                 "asbiin/laravel-webauthn": "^6.0",

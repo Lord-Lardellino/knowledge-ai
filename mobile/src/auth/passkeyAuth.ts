@@ -1,4 +1,4 @@
-import * as Passkeys from 'react-native-passkeys';
+import { Passkey } from 'react-native-passkey';
 import { postJson } from '../api/client';
 import type { TokenPair, TotpPending } from '../types';
 
@@ -25,9 +25,9 @@ export async function loginWithNativePasskey(input: LoginInput): Promise<TokenPa
     { 'X-Tenant-ID': input.tenantId, 'X-Device-ID': input.deviceId },
   );
 
-  const credential = await Passkeys.get({
+  const credential = await Passkey.get({
     challenge: String(options.challenge),
-    rpId: typeof options.rpId === 'string' ? options.rpId : undefined,
+    rpId: typeof options.rpId === 'string' ? options.rpId : '',
     timeout: typeof options.timeout === 'number' ? options.timeout : undefined,
     userVerification: 'required',
   });
@@ -56,8 +56,8 @@ export async function registerWithNativePasskey(input: RegisterInput): Promise<T
     { 'X-Tenant-ID': input.tenantId, 'X-Device-ID': input.deviceId },
   );
 
-  const credential = await Passkeys.create(
-    options as Parameters<typeof Passkeys.create>[0],
+  const credential = await Passkey.create(
+    options as unknown as Parameters<typeof Passkey.create>[0],
   );
 
   if (!credential) {
@@ -79,7 +79,7 @@ export async function sendRecoveryLink(apiUrl: string, email: string): Promise<s
 }
 
 function ensureNativePasskeys(): void {
-  if (!Passkeys.isSupported()) {
+  if (!Passkey.isSupported()) {
     throw new Error('Questo dispositivo non supporta le passkey native.');
   }
 }
