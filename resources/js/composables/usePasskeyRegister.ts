@@ -1,5 +1,4 @@
 import { ref } from 'vue'
-import { router } from '@inertiajs/vue3'
 
 /**
  * usePasskeyRegister — composable per la registrazione con passkey (WebAuthn)
@@ -101,8 +100,10 @@ export function usePasskeyRegister () {
                 return
             }
 
-            // Registrazione riuscita — naviga con Inertia
-            router.visit(redirectTo)
+            const body = await registerRes.json().catch(() => ({}))
+            const target = typeof body.redirect === 'string' ? body.redirect : redirectTo
+
+            window.location.assign(target)
 
         } catch (e) {
             if (e instanceof DOMException && e.name === 'NotAllowedError') {
@@ -145,7 +146,7 @@ function deserializeCreationOptions (options: Record<string, any>): PublicKeyCre
             ...c,
             id: base64ToBuffer(c.id),
         })),
-    }
+    } as PublicKeyCredentialCreationOptions
 }
 
 /**

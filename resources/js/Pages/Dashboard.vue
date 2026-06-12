@@ -6,7 +6,7 @@ import MetricCard from '@/Components/MetricCard.vue'
 defineOptions({ layout: AppLayout })
 
 defineProps<{
-    auth: { user: { name: string; email: string } }
+    auth: { user: { name: string; email: string }; tenant?: { id: number; name: string } | null }
 }>()
 
 const metrics = [
@@ -47,7 +47,9 @@ const iconBg: Record<string, string> = {
         <div class="flex items-center justify-between">
             <div>
                 <h1 class="text-2xl font-semibold">Ciao, {{ auth.user.name.split(' ')[0] }} 👋</h1>
-                <p class="mt-0.5 text-sm text-surface-500">Panoramica del workspace — {{ new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) }}</p>
+                <p class="mt-0.5 text-sm text-surface-500">
+                    <span v-if="auth.tenant">{{ auth.tenant.name }} · </span>Panoramica del workspace — {{ new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' }) }}
+                </p>
             </div>
             <Button label="Carica documenti" icon="pi pi-upload" />
         </div>

@@ -80,12 +80,23 @@ Route::middleware(['web', 'auth', 'security.headers'])
 // ---------------------------------------------------------------------------
 Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->group(function () {
 
-    Route::get('/dashboard', fn () => Inertia::render('Dashboard', [
-        'auth' => ['user' => auth()->user()],
-    ]))->name('dashboard');
+    $authProp = function () {
+        $user = auth()->user();
+        $tenant = $user->tenant_id
+            ? \SaaS\Core\Tenancy\Models\Tenant::find($user->tenant_id, ['id', 'name', 'slug'])
+            : null;
+        return [
+            'user'   => $user,
+            'tenant' => $tenant ? ['id' => $tenant->id, 'name' => $tenant->name] : null,
+        ];
+    };
+
+    Route::get('/dashboard', function () use ($authProp) {
+        return Inertia::render('Dashboard', ['auth' => $authProp()]);
+    })->name('dashboard');
 
     // Profilo: gestione passkey (aggiunta / rimozione dispositivi)
-    Route::get('/profile/passkeys', function () {
+    Route::get('/profile/passkeys', function () use ($authProp) {
         $keys = WebauthnKey::where('user_id', auth()->id())
             ->orderBy('created_at', 'desc')
             ->get(['id', 'name', 'type', 'created_at'])
@@ -97,16 +108,18 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
             ]);
 
         return Inertia::render('Profile/Passkeys', [
-            'auth'        => ['user' => auth()->user()],
+            'auth'        => $authProp(),
             'initialKeys' => $keys,
         ]);
     })->name('profile.passkeys');
 
     // Profilo: gestione TOTP (attiva / disattiva 2FA)
-    Route::get('/profile/totp', fn () => Inertia::render('Profile/Totp', [
-        'auth'         => ['user' => auth()->user()],
-        'totp_enabled' => auth()->user()->two_factor_confirmed_at !== null,
-    ]))->name('profile.totp');
+    Route::get('/profile/totp', function () use ($authProp) {
+        return Inertia::render('Profile/Totp', [
+            'auth'         => $authProp(),
+            'totp_enabled' => auth()->user()->two_factor_confirmed_at !== null,
+        ]);
+    })->name('profile.totp');
 
     Route::post('/logout', function () {
         Auth::logout();

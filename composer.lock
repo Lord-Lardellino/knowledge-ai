@@ -4174,12 +4174,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/webby-developers/saas-core.git",
-                "reference": "0458cc44ff8934b115e18acf3d3e2eae2016e9da"
+                "reference": "eeb56a98eff47d717c872a3367d4446dfaf06874"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/webby-developers/saas-core/zipball/0458cc44ff8934b115e18acf3d3e2eae2016e9da",
-                "reference": "0458cc44ff8934b115e18acf3d3e2eae2016e9da",
+                "url": "https://api.github.com/repos/webby-developers/saas-core/zipball/eeb56a98eff47d717c872a3367d4446dfaf06874",
+                "reference": "eeb56a98eff47d717c872a3367d4446dfaf06874",
                 "shasum": ""
             },
             "require": {
@@ -4233,7 +4233,7 @@
                 }
             ],
             "description": "Security core for SaaS applications — Auth, Tenancy, Access, Audit, Security headers",
-            "time": "2026-06-12T16:01:36+00:00"
+            "time": "2026-06-12T16:54:40+00:00"
         },
         {
             "name": "spatie/laravel-activitylog",

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref }  from 'vue'
-import { Head } from '@inertiajs/vue3'
-import AppLogo  from '@/Components/AppLogo.vue'
+import { ref }        from 'vue'
+import { Head }       from '@inertiajs/vue3'
+import AuthSidePanel  from '@/Components/AuthSidePanel.vue'
 
 const email   = ref('')
 const loading = ref(false)
@@ -42,70 +42,71 @@ async function sendRecoveryLink(): Promise<void> {
 <template>
     <Head title="Recupero accesso" />
 
-    <div class="min-h-screen flex items-center justify-center bg-surface-50 dark:bg-surface-900">
-        <div class="w-full max-w-sm px-4">
+    <div class="min-h-screen flex">
 
-            <div class="flex justify-center mb-8">
-                <AppLogo />
-            </div>
+        <AuthSidePanel
+            quote="Recupera l'accesso al tuo account in pochi secondi."
+            :steps="[
+                { icon: 'pi pi-envelope',    text: 'Inserisci la tua email aziendale' },
+                { icon: 'pi pi-send',        text: 'Ricevi un link sicuro via email' },
+                { icon: 'pi pi-fingerprint', text: 'Registra il nuovo dispositivo' },
+            ]"
+        />
 
-            <Card class="shadow-lg">
-                <template #content>
+        <!-- Right — form -->
+        <div class="flex-1 flex items-center justify-center p-6 bg-surface-50 dark:bg-surface-950">
+            <div class="w-full max-w-sm">
 
-                    <!-- Stato: link inviato -->
-                    <template v-if="sent">
-                        <div class="text-center">
-                            <div class="grid h-14 w-14 place-items-center rounded-full bg-green-50 dark:bg-green-500/10 mx-auto mb-4">
-                                <i class="pi pi-envelope-open text-2xl text-green-600 dark:text-green-400" />
-                            </div>
-                            <h2 class="text-lg font-semibold mb-2">Controlla la tua email</h2>
-                            <p class="text-sm text-surface-500 mb-4">
-                                Se <strong>{{ email }}</strong> è registrata, riceverai un link entro pochi secondi. Scade tra 15 minuti.
-                            </p>
-                            <p class="text-xs text-surface-400">Non trovi l'email? Controlla la cartella spam.</p>
+                <div class="flex items-center gap-2 mb-10 lg:hidden">
+                    <div class="w-7 h-7 rounded-lg bg-primary-500 flex items-center justify-center">
+                        <i class="pi pi-bolt text-white text-xs" />
+                    </div>
+                    <span class="font-bold text-base tracking-tight">Sapio</span>
+                </div>
+
+                <!-- Stato: inviato -->
+                <template v-if="sent">
+                    <div class="text-center">
+                        <div class="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mx-auto mb-6">
+                            <i class="pi pi-envelope-open text-2xl text-emerald-600 dark:text-emerald-400" />
                         </div>
-                    </template>
-
-                    <!-- Stato: form -->
-                    <template v-else>
-                        <p class="text-sm text-surface-500 mb-6">
-                            Inserisci l'email del tuo account. Ti invieremo un link per accedere e registrare un nuovo dispositivo.
+                        <h1 class="text-2xl font-semibold mb-2">Controlla la tua email</h1>
+                        <p class="text-sm text-surface-500 mb-2">
+                            Se <strong>{{ email }}</strong> è registrata, riceverai un link entro pochi secondi.
                         </p>
+                        <p class="text-xs text-surface-400 mb-8">Il link scade tra 15 minuti. Controlla anche la cartella spam.</p>
+                        <Divider />
+                        <Button as="a" href="/login" label="← Torna al login" link class="p-0 text-sm mt-4" />
+                    </div>
+                </template>
 
-                        <div class="flex flex-col gap-2 mb-6">
-                            <label for="email" class="text-sm font-medium">Email</label>
-                            <InputText
-                                id="email"
-                                v-model="email"
-                                type="email"
-                                placeholder="nome@azienda.com"
-                                autocomplete="email"
-                                class="w-full"
-                                :disabled="loading"
-                                @keyup.enter="sendRecoveryLink"
-                            />
-                        </div>
+                <!-- Stato: form -->
+                <template v-else>
+                    <h1 class="text-2xl font-semibold mb-1">Recupera accesso</h1>
+                    <p class="text-sm text-surface-500 mb-8">
+                        Inserisci la tua email. Ti invieremo un link per accedere e registrare un nuovo dispositivo.
+                    </p>
 
-                        <Message v-if="error" severity="error" :closable="false" class="mb-4">
-                            {{ error }}
-                        </Message>
-
-                        <Button
-                            label="Invia link di accesso"
-                            icon="pi pi-send"
-                            class="w-full"
-                            :loading="loading"
-                            @click="sendRecoveryLink"
-                        />
-                    </template>
-
-                    <div class="text-center mt-6 pt-6 border-t border-surface-200 dark:border-surface-700">
-                        <Button as="a" href="/login" label="← Torna al login" link class="p-0 text-sm" />
+                    <div class="flex flex-col gap-1.5 mb-6">
+                        <label for="email" class="text-sm font-medium">Email</label>
+                        <InputText id="email" v-model="email" type="email" placeholder="nome@azienda.com"
+                            autocomplete="email" class="w-full" :disabled="loading" @keyup.enter="sendRecoveryLink" />
                     </div>
 
-                </template>
-            </Card>
+                    <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
 
+                    <Button label="Invia link di accesso" icon="pi pi-send" class="w-full mb-8"
+                        :loading="loading" @click="sendRecoveryLink" />
+
+                    <Divider />
+
+                    <div class="text-center mt-4">
+                        <Button as="a" href="/login" label="← Torna al login" link class="p-0 text-sm" />
+                    </div>
+                </template>
+
+            </div>
         </div>
+
     </div>
 </template>

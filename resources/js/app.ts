@@ -3,10 +3,30 @@ import { createInertiaApp }  from '@inertiajs/vue3'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import PrimeVue               from 'primevue/config'
 import Aura                   from '@primevue/themes/aura'
+import { definePreset }       from '@primevue/themes'
+
+const SapioTheme = definePreset(Aura, {
+    semantic: {
+        primary: {
+            50:  '{teal.50}',
+            100: '{teal.100}',
+            200: '{teal.200}',
+            300: '{teal.300}',
+            400: '{teal.400}',
+            500: '{teal.500}',
+            600: '{teal.600}',
+            700: '{teal.700}',
+            800: '{teal.800}',
+            900: '{teal.900}',
+            950: '{teal.950}',
+        },
+    },
+})
 import ToastService           from 'primevue/toastservice'
 import ConfirmationService    from 'primevue/confirmationservice'
 import Tooltip                from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
+import '@fortawesome/fontawesome-free/css/all.min.css'
 
 const initialPageElement = document.getElementById('app') as HTMLElement | null
 const initialPage = initialPageElement?.dataset.page
@@ -28,7 +48,7 @@ createInertiaApp({
             .use(plugin)
             .use(PrimeVue, {
                 theme: {
-                    preset: Aura,
+                    preset: SapioTheme,
                     options: {
                         darkModeSelector: '.app-dark',
                         cssLayer: { name: 'primevue', order: 'theme, base, primevue' },

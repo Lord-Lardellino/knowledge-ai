@@ -236,7 +236,7 @@ function deserializeCreationOptions (options: Record<string, any>): PublicKeyCre
             ...c,
             id: base64ToBuffer(c.id),
         })),
-    }
+    } as PublicKeyCredentialCreationOptions
 }
 
 function serializeAttestation (credential: PublicKeyCredential): Record<string, unknown> {
