@@ -15,6 +15,9 @@ export type TokenPair = {
   refresh_token?: string;
   token_type?: 'Bearer';
   expires_in?: number;
+  // Slug del tenant dell'utente (es. creato dal self-signup con "company").
+  // Il client lo salva in sessione e lo usa come X-Tenant-ID.
+  tenant?: string | null;
 };
 
 // Risposta di /auth/mobile/passkey/verify quando l'utente ha il 2FA attivo:

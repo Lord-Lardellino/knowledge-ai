@@ -186,8 +186,15 @@ class PasskeyController extends Controller
             ] + $this->deviceTokenService->createTotpPendingToken($user, $deviceId));
         }
 
-        return response()->json(
-            $this->deviceTokenService->createTokenPair($user, $deviceId)
-        );
+        // 'tenant' nella risposta: permette al client mobile di impostare
+        // l'X-Tenant-ID corretto anche al primo login su un nuovo device.
+        $tenantSlug = $user->tenant_id
+            ? \SaaS\Core\Tenancy\Models\Tenant::find($user->tenant_id)?->slug
+            : null;
+
+        return response()->json(array_merge(
+            $this->deviceTokenService->createTokenPair($user, $deviceId),
+            ['tenant' => $tenantSlug],
+        ));
     }
 }

@@ -17,9 +17,11 @@ type Mode = 'login' | 'register' | 'recovery';
 export function AuthScreen() {
   const { login, register, recover, signInDemo } = useAuth();
   const [mode, setMode] = useState<Mode>('login');
-  const [apiUrl, setApiUrl] = useState(defaultApiUrl);
-  const [tenantId, setTenantId] = useState(defaultTenantId);
+  // URL e tenant arrivano dalla config: niente campi tecnici in UI.
+  const [apiUrl] = useState(defaultApiUrl);
+  const [tenantId] = useState(defaultTenantId);
   const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export function AuthScreen() {
           tenantId: tenantId.trim(),
           name: name.trim(),
           email: email.trim(),
+          company: company.trim() || undefined,
         });
       } else {
         setMessage(await recover({ apiUrl: apiUrl.trim(), tenantId: tenantId.trim(), email: email.trim() }));
@@ -79,40 +82,36 @@ export function AuthScreen() {
       </View>
 
       <View style={styles.form}>
-        {/* Campi di debug: visibili solo in dev build. In produzione i valori
-            arrivano da app.json (EXPO_PUBLIC_API_URL / EXPO_PUBLIC_TENANT_ID). */}
-        {__DEV__ ? (
+        {mode === 'register' ? (
           <>
+            <Text style={styles.label}>Nome completo</Text>
             <TextInput
-              autoCapitalize="none"
-              value={apiUrl}
-              onChangeText={setApiUrl}
-              placeholder="API URL"
+              value={name}
+              onChangeText={setName}
+              placeholder="Mario Rossi"
+              placeholderTextColor={colors.muted}
               style={styles.input}
             />
+            {/* Self-signup: compilando l'azienda viene creato il tenant
+                e l'utente ne diventa owner. Vuoto = registrazione senza tenant. */}
+            <Text style={styles.label}>Nome azienda</Text>
             <TextInput
-              autoCapitalize="none"
-              value={tenantId}
-              onChangeText={setTenantId}
-              placeholder="Tenant ID"
+              value={company}
+              onChangeText={setCompany}
+              placeholder="La tua azienda (crea il tuo spazio)"
+              placeholderTextColor={colors.muted}
               style={styles.input}
             />
           </>
         ) : null}
-        {mode === 'register' ? (
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Nome"
-            style={styles.input}
-          />
-        ) : null}
+        <Text style={styles.label}>Email</Text>
         <TextInput
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
-          placeholder="Email"
+          placeholder="nome@azienda.it"
+          placeholderTextColor={colors.muted}
           style={styles.input}
         />
 
@@ -209,6 +208,12 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing.md,
+  },
+  label: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: -6,
   },
   input: {
     backgroundColor: colors.surface,

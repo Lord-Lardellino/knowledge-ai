@@ -363,8 +363,15 @@ class PasskeyRegistrationController extends Controller
             $this->onboarding->attachOwner($user, $tenant);
         }
 
-        return response()->json(
-            $this->deviceTokenService->createTokenPair($user, $request->string('device_id')->toString())
-        );
+        // 'tenant' nella risposta: il client mobile lo salva in sessione e lo
+        // usa come X-Tenant-ID — senza, resterebbe sul default di config.
+        $tenantSlug = $user->tenant_id
+            ? \SaaS\Core\Tenancy\Models\Tenant::find($user->tenant_id)?->slug
+            : null;
+
+        return response()->json(array_merge(
+            $this->deviceTokenService->createTokenPair($user, $request->string('device_id')->toString()),
+            ['tenant' => $tenantSlug],
+        ));
     }
 }
