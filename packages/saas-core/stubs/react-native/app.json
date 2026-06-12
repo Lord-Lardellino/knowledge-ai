@@ -1,0 +1,35 @@
+{
+  "expo": {
+    "name": "Operations Mobile",
+    "slug": "operations-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "operations",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.webby.operationsmobile",
+      "associatedDomains": [
+        "webcredentials:your-app.example.com"
+      ]
+    },
+    "android": {
+      "package": "com.webby.operationsmobile"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "EXPO_PUBLIC_API_URL": "https://your-app.example.com",
+      "EXPO_PUBLIC_TENANT_ID": "acme"
+    }
+  }
+}

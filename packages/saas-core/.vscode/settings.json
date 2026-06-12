@@ -1,0 +1,7 @@
+{
+    // Disabilita i warning del linter CSS built-in di VSCode per le at-rule
+    // custom di Tailwind v4: @theme, @layer, @apply, @source.
+    // Non sono errori reali — Tailwind le processa correttamente a build time.
+    "css.lint.unknownAtRules": "ignore",
+    "scss.lint.unknownAtRules": "ignore"
+}

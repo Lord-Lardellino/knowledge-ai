@@ -1,0 +1,71 @@
+{
+    "name": "saas/core",
+    "description": "Security core for SaaS applications — Auth, Tenancy, Access, Audit, Security headers",
+    "type": "library",
+    "license": "MIT",
+
+    "authors": [
+        {
+            "name": "Webby Developers",
+            "email": "andrea.camma.dev@gmail.com"
+        }
+    ],
+
+    "require": {
+        "php": "^8.3",
+
+        "laravel/framework": "^12.0|^13.0",
+
+        "laravel/sanctum": "^4.0",
+        "laravel/fortify": "^1.0",
+
+        "asbiin/laravel-webauthn": "^6.0",
+
+        "inertiajs/inertia-laravel": "^2.0",
+
+        "spatie/laravel-permission": "^6.0",
+        "spatie/laravel-activitylog": "^4.0",
+        "spatie/laravel-csp": "^3.0"
+    },
+
+    "require-dev": {
+        "orchestra/testbench": "^10.0|^11.0",
+        "pestphp/pest": "^3.0|^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0|^4.0"
+    },
+
+    "autoload": {
+        "psr-4": {
+            "SaaS\\Core\\": "src/"
+        }
+    },
+
+    "autoload-dev": {
+        "psr-4": {
+            "SaaS\\Core\\Tests\\": "tests/"
+        }
+    },
+
+    "extra": {
+        "laravel": {
+            "providers": [
+                "SaaS\\Core\\SaasCoreServiceProvider"
+            ]
+        }
+    },
+
+    "suggest": {
+        "bacon/bacon-qr-code": "Necessario per generare QR code TOTP nel backend (alternativa: generare lato frontend dall'otpauth:// URL)",
+        "sentry/sentry-laravel": "Integrazione Sentry per error tracking in produzione (L6)",
+        "logtail/monolog-logtail": "Integrazione Logtail per log centralizzati (L6)",
+        "spatie/laravel-backup": "Backup automatico S3 con Object Lock WORM (L5)"
+    },
+
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}
