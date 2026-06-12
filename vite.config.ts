@@ -2,11 +2,10 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import laravel from 'laravel-vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
+import Components from 'unplugin-vue-components/vite'
+import { PrimeVueResolver } from '@primevue/auto-import-resolver'
 import { resolve } from 'path'
 
-/**
- * Vite config per Laravel + Inertia.js + Vue 3
- */
 export default defineConfig({
     plugins: [
         laravel({
@@ -21,6 +20,10 @@ export default defineConfig({
                     includeAbsolute: false,
                 },
             },
+        }),
+        Components({
+            dts: 'resources/js/components.d.ts',
+            resolvers: [PrimeVueResolver()],
         }),
     ],
 

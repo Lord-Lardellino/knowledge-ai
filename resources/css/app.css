@@ -1,45 +1,8 @@
-/* saas-core theme */
-/*
- * app.css — Tailwind v4 + PrimeVue Aura
- *
- * TAILWIND v4: nessun config file — tutto va qui con @import e @theme.
- * PRIMEVUE: cssLayer in app.ts mette gli stili PrimeVue nel layer
- * "primevue", così le utility Tailwind hanno sempre la precedenza.
- *
- * ORDINE LAYERS (dal meno specifico al più specifico — Tailwind v4):
- *   theme    ← variabili CSS Tailwind
- *   base     ← reset Tailwind
- *   primevue ← stili componenti PrimeVue (inserito qui da cssLayer)
- *   utilities ← classi Tailwind (flex, text-lg, bg-primary, ecc.) ← vince sempre
- */
 @import "tailwindcss";
-
-/*
- * tailwindcss-primeui — ponte ufficiale PrimeVue ↔ Tailwind v4
- *
- * Esporta le variabili PrimeVue (--p-primary-*, --p-surface-*) come
- * classi Tailwind utilità: bg-primary, text-surface-500, ecc.
- * Senza questo import queste classi non esistono.
- * Installa con: npm install tailwindcss-primeui
- */
+@custom-variant dark (&:where(.app-dark, .app-dark *));
 @import "tailwindcss-primeui";
 
-/*
- * Personalizza il tema Tailwind v4 con @theme.
- * Queste variabili CSS diventano classi Tailwind: bg-primary, text-primary ecc.
- * Allineate con le variabili PrimeVue Aura --p-primary-* per coerenza visiva.
- */
-@theme {
-    --color-primary-50:  #eef2ff;
-    --color-primary-100: #e0e7ff;
-    --color-primary-500: #6366f1;
-    --color-primary-600: #4f46e5;
-    --color-primary-700: #4338ca;
 
-    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-}
-
-/* Base globale */
 html, body, #app {
     height: 100%;
 }
@@ -47,6 +10,17 @@ html, body, #app {
 body {
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    background-color: var(--p-surface-50);
-    color: var(--p-surface-900);
+}
+
+
+
+
+@keyframes rise-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
