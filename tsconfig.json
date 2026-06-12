@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+        "ignoreDeprecations": "6.0",
+        "target":           "ESNext",
+        "module":           "ESNext",
+        "moduleResolution": "bundler",
+        "strict":           true,
+        "jsx":              "preserve",
+        "lib":              ["ESNext", "DOM"],
+        "types":            ["vite/client"],
+        "baseUrl":          ".",
+        "paths": {
+            "@/*": ["resources/js/*"]
+        },
+        "noEmit":              true,
+        "skipLibCheck":        true,
+        "allowImportingTsExtensions": true
+    },
+    "include": ["resources/js/**/*.ts", "resources/js/**/*.vue"],
+    "exclude": ["node_modules", "vendor"]
+}
