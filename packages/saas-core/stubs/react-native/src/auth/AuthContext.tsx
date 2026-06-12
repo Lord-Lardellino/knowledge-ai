@@ -13,6 +13,7 @@ type AuthInput = {
 
 type RegisterInput = AuthInput & {
   name: string;
+  company?: string; // self-signup: crea il tenant, l'utente diventa owner
 };
 
 // Login passkey riuscito ma 2FA richiesto: contesto per completare
@@ -57,7 +58,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) => {
     const nextSession: Session = {
       apiUrl: input.apiUrl || defaultApiUrl,
-      tenantId: input.tenantId || defaultTenantId,
+      // Il tenant restituito dal server (es. appena creato col self-signup)
+      // ha priorità sul valore di input/config.
+      tenantId: tokenPair.tenant || input.tenantId || defaultTenantId,
       accessToken: tokenPair.access_token,
       refreshToken: tokenPair.refresh_token,
       tokenType: tokenPair.token_type || 'Bearer',
@@ -125,13 +128,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelTotpLogin: () => {
         setTotpPending(null);
       },
-      register: async ({ apiUrl, tenantId, name, email }) => {
+      register: async ({ apiUrl, tenantId, name, email, company }) => {
         const deviceId = await getDeviceId();
         const tokenPair = await registerWithNativePasskey({
           apiUrl: apiUrl || defaultApiUrl,
           tenantId: tenantId || defaultTenantId,
           name,
           email,
+          company,
           deviceId,
         });
 

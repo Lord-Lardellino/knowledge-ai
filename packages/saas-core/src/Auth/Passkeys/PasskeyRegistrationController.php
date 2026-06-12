@@ -82,6 +82,11 @@ class PasskeyRegistrationController extends Controller
         $email     = $request->input('email');
         $name      = $request->input('name');
 
+        // Self-signup disattivato → niente creazione tenant da registrazione
+        if ($request->filled('company') && ! config('saas-core.tenancy.self_signup', true)) {
+            return response()->json(['message' => 'La creazione di nuove aziende non è abilitata.'], 422);
+        }
+
         // Invito: deve esistere, essere pendente e combaciare con l'email.
         // Validato QUI (step 1) per dare errore subito, prima della biometrica.
         $invite = null;
@@ -253,6 +258,10 @@ class PasskeyRegistrationController extends Controller
             'invite_token' => ['sometimes', 'nullable', 'string', 'max:255'],
         ]);
 
+        if ($request->filled('company') && ! config('saas-core.tenancy.self_signup', true)) {
+            return response()->json(['message' => 'La creazione di nuove aziende non è abilitata.'], 422);
+        }
+
         if ($request->filled('invite_token')) {
             $invite = $this->onboarding->findPendingInvite($request->input('invite_token'));
 
@@ -358,7 +367,11 @@ class PasskeyRegistrationController extends Controller
             if ($invite && strcasecmp($invite->email, $user->email) === 0) {
                 $this->onboarding->acceptInvite($invite, $user);
             }
-        } elseif ($request->filled('company') && ! $user->tenant_id) {
+        } elseif (
+            $request->filled('company')
+            && ! $user->tenant_id
+            && config('saas-core.tenancy.self_signup', true)
+        ) {
             $tenant = $this->onboarding->createTenant($request->input('company'));
             $this->onboarding->attachOwner($user, $tenant);
         }

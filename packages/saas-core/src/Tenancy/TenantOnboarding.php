@@ -33,7 +33,9 @@ class TenantOnboarding
      */
     public function createTenant(string $companyName): Tenant
     {
-        return Tenant::create([
+        $model = config('saas-core.tenancy.model', Tenant::class);
+
+        return $model::create([
             'name' => $companyName,
             'slug' => $this->uniqueSlug($companyName),
         ]);
@@ -119,9 +121,10 @@ class TenantOnboarding
             $base = 'azienda';
         }
 
+        $model = config('saas-core.tenancy.model', Tenant::class);
         $slug = $base;
         $i = 2;
-        while (Tenant::where('slug', $slug)->exists()) {
+        while ($model::where('slug', $slug)->exists()) {
             $slug = "{$base}-{$i}";
             $i++;
         }

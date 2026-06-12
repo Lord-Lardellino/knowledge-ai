@@ -122,6 +122,15 @@ return [
         //               Per SaaS che servono web E mobile insieme.
         'resolver' => 'composite',
 
+        // Model Eloquent del tenant. Sostituiscilo se la tua app estende
+        // il Tenant del package (es. App\Models\Tenant con colonne extra).
+        'model' => \SaaS\Core\Tenancy\Models\Tenant::class,
+
+        // Self-signup: permette di creare un tenant alla registrazione
+        // passando "company". false = i tenant si creano solo da backend
+        // (es. SaaS a vendita assistita dove il commerciale apre il tenant).
+        'self_signup' => true,
+
         // Nome della colonna tenant_id in ogni tabella del database.
         // Il TenantScope la usa per aggiungere WHERE tenant_id = ? ad ogni query.
         'column' => 'tenant_id',

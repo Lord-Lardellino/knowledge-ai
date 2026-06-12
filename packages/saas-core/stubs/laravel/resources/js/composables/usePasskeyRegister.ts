@@ -25,7 +25,12 @@ export function usePasskeyRegister () {
     const loading = ref(false)
     const error   = ref<string | null>(null)
 
-    async function register (name: string, email: string, redirectTo = '/dashboard'): Promise<void> {
+    type RegisterOptions = {
+        company?: string      // self-signup: crea il tenant, l'utente diventa owner
+        inviteToken?: string  // invito: entra in un tenant esistente
+    }
+
+    async function register (name: string, email: string, redirectTo = '/dashboard', options: RegisterOptions = {}): Promise<void> {
         if (!name || !email) {
             error.value = 'Inserisci nome ed email prima di procedere.'
             return
@@ -48,7 +53,12 @@ export function usePasskeyRegister () {
                     'X-CSRF-TOKEN': csrfToken(),
                     'Accept':       'application/json',
                 },
-                body: JSON.stringify({ name, email }),
+                body: JSON.stringify({
+                    name,
+                    email,
+                    company:      options.company,
+                    invite_token: options.inviteToken,
+                }),
             })
 
             if (!optionsRes.ok) {

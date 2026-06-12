@@ -94,6 +94,18 @@ it('registra senza tenant quando company e invite_token mancano', function () {
         ->and(Tenant::count())->toBe(0);
 });
 
+it('rifiuta company se il self-signup è disabilitato in config', function () {
+    config(['saas-core.tenancy.self_signup' => false]);
+
+    $this->postJson('/auth/passkey/register/options', [
+        'name'    => 'Mario Rossi',
+        'email'   => 'mario@example.com',
+        'company' => 'Rossi SRL',
+    ])
+        ->assertStatus(422)
+        ->assertJson(['message' => 'La creazione di nuove aziende non è abilitata.']);
+});
+
 // ---------------------------------------------------------------------------
 // SLUG
 // ---------------------------------------------------------------------------

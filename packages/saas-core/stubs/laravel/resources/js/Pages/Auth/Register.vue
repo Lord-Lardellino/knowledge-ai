@@ -28,15 +28,23 @@ import Message                   from 'primevue/message'
 import { usePasskeyRegister }    from '@/composables/usePasskeyRegister'
 
 // Campi del form
-const name  = ref('')
-const email = ref('')
+const name    = ref('')
+const email   = ref('')
+const company = ref('')
+
+// Invito: se l'URL è /register?invite=TOKEN l'utente entra in un tenant
+// esistente — il campo azienda non serve e viene nascosto.
+const inviteToken = new URLSearchParams(window.location.search).get('invite') ?? ''
 
 // Composable: gestisce tutto il flusso WebAuthn di registrazione
 const { register, loading, error } = usePasskeyRegister()
 
 /** Avvia la registrazione — chiamato da pulsante e da tasto Enter */
 function handleRegister () {
-    register(name.value, email.value)
+    register(name.value, email.value, '/dashboard', {
+        company:     company.value || undefined,
+        inviteToken: inviteToken || undefined,
+    })
 }
 </script>
 
@@ -75,6 +83,26 @@ function handleRegister () {
                         :disabled="loading"
                         @keyup.enter="handleRegister"
                     />
+                </div>
+
+                <!-- Campo azienda (self-signup) — nascosto se si arriva da un invito -->
+                <div v-if="!inviteToken" class="flex flex-col gap-2 mb-4">
+                    <label for="company" class="text-sm font-medium text-surface-700">
+                        Nome azienda
+                    </label>
+                    <InputText
+                        id="company"
+                        v-model="company"
+                        type="text"
+                        placeholder="La tua azienda"
+                        autocomplete="organization"
+                        class="w-full"
+                        :disabled="loading"
+                        @keyup.enter="handleRegister"
+                    />
+                    <small class="text-surface-400">
+                        Crea lo spazio di lavoro della tua azienda: sarai l'amministratore.
+                    </small>
                 </div>
 
                 <!-- Campo email -->

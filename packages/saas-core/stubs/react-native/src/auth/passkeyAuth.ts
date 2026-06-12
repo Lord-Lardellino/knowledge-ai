@@ -11,6 +11,7 @@ type LoginInput = {
 
 type RegisterInput = LoginInput & {
   name: string;
+  company?: string; // self-signup: il server crea il tenant a passkey verificata
 };
 
 // Restituisce la coppia di token, OPPURE TotpPending se l'utente ha il 2FA
@@ -52,6 +53,7 @@ export async function registerWithNativePasskey(input: RegisterInput): Promise<T
     {
       name: input.name,
       email: input.email,
+      company: input.company,
     },
     { 'X-Tenant-ID': input.tenantId, 'X-Device-ID': input.deviceId },
   );
@@ -69,6 +71,9 @@ export async function registerWithNativePasskey(input: RegisterInput): Promise<T
     device_id: input.deviceId,
     key_name: getDeviceLabel(),
     response: credential,
+    // Flusso stateless: company rimandata anche allo step 2 —
+    // il tenant viene creato solo qui, a passkey verificata.
+    company: input.company,
   }, { 'X-Tenant-ID': input.tenantId, 'X-Device-ID': input.deviceId });
 }
 
