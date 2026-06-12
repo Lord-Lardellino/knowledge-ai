@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "efbf4beda7cfe04dd3a3e5582da8dd15",
+    "content-hash": "837076cf86d8d82e7327125508556fa8",
     "packages": [
         {
             "name": "asbiin/laravel-webauthn",
@@ -4170,11 +4170,17 @@
         },
         {
             "name": "saas/core",
-            "version": "dev-feature/knowledge-base",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/webby-developers/saas-core.git",
+                "reference": "0458cc44ff8934b115e18acf3d3e2eae2016e9da"
+            },
             "dist": {
-                "type": "path",
-                "url": "packages/saas-core",
-                "reference": "da66424ae3d1093dd8086a8c2b66ddfc703cd015"
+                "type": "zip",
+                "url": "https://api.github.com/repos/webby-developers/saas-core/zipball/0458cc44ff8934b115e18acf3d3e2eae2016e9da",
+                "reference": "0458cc44ff8934b115e18acf3d3e2eae2016e9da",
+                "shasum": ""
             },
             "require": {
                 "asbiin/laravel-webauthn": "^6.0",
@@ -4198,6 +4204,7 @@
                 "sentry/sentry-laravel": "Integrazione Sentry per error tracking in produzione (L6)",
                 "spatie/laravel-backup": "Backup automatico S3 con Object Lock WORM (L5)"
             },
+            "default-branch": true,
             "type": "library",
             "extra": {
                 "laravel": {
@@ -4226,9 +4233,7 @@
                 }
             ],
             "description": "Security core for SaaS applications — Auth, Tenancy, Access, Audit, Security headers",
-            "transport-options": {
-                "relative": true
-            }
+            "time": "2026-06-12T16:01:36+00:00"
         },
         {
             "name": "spatie/laravel-activitylog",

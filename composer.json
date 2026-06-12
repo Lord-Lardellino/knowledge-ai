@@ -12,7 +12,7 @@
                     "php":  "^8.3",
                     "laravel/framework":  "^13.8",
                     "laravel/tinker":  "^3.0",
-                    "saas/core":  "@dev"
+                    "saas/core":  "dev-main"
                 },
     "require-dev":  {
                         "fakerphp/faker":  "^1.23",
@@ -94,8 +94,9 @@
     "prefer-stable":  true,
     "repositories":  {
                          "saas-core":  {
-            "type": "path",
-            "url": "packages/saas-core"
-        }
+                                           "type":  "vcs",
+                                           "url":  "https://github.com/webby-developers/saas-core.git",
+                                           "no-api":  true
+                                       }
                      }
 }
