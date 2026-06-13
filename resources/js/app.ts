@@ -1,10 +1,15 @@
 ﻿import { createApp, h, type DefineComponent } from 'vue'
-import { createInertiaApp }  from '@inertiajs/vue3'
+import { createInertiaApp }     from '@inertiajs/vue3'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
-import PrimeVue               from 'primevue/config'
-import Aura                   from '@primevue/themes/aura'
-import { definePreset }       from '@primevue/themes'
+import PrimeVue                 from 'primevue/config'
+import Aura                     from '@primevue/themes/aura'
+import { definePreset }         from '@primevue/themes'
+import ToastService             from 'primevue/toastservice'
+import ConfirmationService      from 'primevue/confirmationservice'
+import Tooltip                  from 'primevue/tooltip'
+import 'primeicons/primeicons.css'
 
+// Tema: colore primario teal tramite token nativi della palette PrimeVue.
 const SapioTheme = definePreset(Aura, {
     semantic: {
         primary: {
@@ -22,11 +27,6 @@ const SapioTheme = definePreset(Aura, {
         },
     },
 })
-import ToastService           from 'primevue/toastservice'
-import ConfirmationService    from 'primevue/confirmationservice'
-import Tooltip                from 'primevue/tooltip'
-import 'primeicons/primeicons.css'
-import '@fortawesome/fontawesome-free/css/all.min.css'
 
 const initialPageElement = document.getElementById('app') as HTMLElement | null
 const initialPage = initialPageElement?.dataset.page

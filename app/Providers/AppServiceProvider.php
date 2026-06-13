@@ -21,6 +21,14 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // --- TENANT CONTEXT DEFAULT ---
+        // Il TenantScope di saas-core legge app('current.tenant.id'). In HTTP lo
+        // bindano SetTenant / BindTenantFromUser, ma in job/comandi/test no:
+        // senza un default l'accesso lancerebbe "Target class does not exist".
+        // Bind a null = nessun filtro tenant fuori dal contesto richiesta.
+        $this->app->bindIf('current.tenant.id', fn () => null);
+        $this->app->bindIf('current.tenant', fn () => null);
+
         // --- CSP POLICY ---
         // Registra la policy CSP di default del package.
         // Se non hai bisogno di personalizzarla, basta questa riga.

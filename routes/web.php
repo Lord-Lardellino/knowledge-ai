@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use LaravelWebauthn\Models\WebauthnKey;
+use App\Http\Controllers\DocumentController;
 
 /**
  * Route Web — saas/core starter
@@ -127,5 +128,17 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
         request()->session()->regenerateToken();
         return redirect('/login');
     })->name('logout');
+
+    // -----------------------------------------------------------------------
+    // Knowledge base — documenti (tenant legato all'utente autenticato)
+    // -----------------------------------------------------------------------
+    Route::middleware('tenant.user')->group(function () {
+        Route::get('/knowledge',            [DocumentController::class, 'page'])->name('knowledge');
+        Route::get('/documents',            [DocumentController::class, 'index'])->name('documents.index');
+        Route::get('/documents/search',     [DocumentController::class, 'search'])->name('documents.search');
+        Route::post('/documents',           [DocumentController::class, 'store'])->name('documents.store');
+        Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
+        Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+    });
 
 });
