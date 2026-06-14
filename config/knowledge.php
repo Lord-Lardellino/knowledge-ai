@@ -54,4 +54,39 @@ return [
         'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Piani — metadati di visualizzazione per la pagina pricing
+    |--------------------------------------------------------------------------
+    | I POSTI e i Price ID Stripe stanno in config saas-core.billing.plans.
+    | Qui solo l'aspetto: etichetta, prezzo mostrato, descrizione, feature.
+    | La chiave deve combaciare con quella in saas-core.billing.plans.
+    */
+    'billing_plans' => [
+        'pro' => [
+            'label'       => 'Pro',
+            'price_label' => '49€ / mese',
+            'description' => 'Per team che crescono.',
+            'features'    => [
+                'Fino a 10 utenti',
+                'Documenti illimitati',
+                'Ricerca semantica',
+                'Chat AI sui documenti',
+            ],
+            'highlight'   => true, // piano evidenziato nella pagina
+        ],
+        'enterprise' => [
+            'label'       => 'Enterprise',
+            'price_label' => '149€ / mese',
+            'description' => 'Per aziende strutturate.',
+            'features'    => [
+                'Fino a 50 utenti',
+                'Tutto del piano Pro',
+                'Template AI',
+                'Supporto prioritario',
+            ],
+            'highlight'   => false,
+        ],
+    ],
+
 ];

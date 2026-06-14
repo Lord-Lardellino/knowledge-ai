@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use LaravelWebauthn\Models\WebauthnKey;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\BillingController;
 
 /**
  * Route Web — saas/core starter
@@ -92,9 +93,22 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
         ];
     };
 
+    // Dashboard — richiede tenant attivo (trial o abbonamento) via 'subscribed'.
     Route::get('/dashboard', function () use ($authProp) {
         return Inertia::render('Dashboard', ['auth' => $authProp()]);
-    })->name('dashboard');
+    })->middleware(['tenant.user', 'subscribed'])->name('dashboard');
+
+    // -----------------------------------------------------------------------
+    // Billing — pricing, checkout, gestione abbonamento.
+    // NON sotto 'subscribed' (qui ci arriva chi NON ha accesso, niente loop).
+    // -----------------------------------------------------------------------
+    Route::middleware('tenant.user')->group(function () {
+        Route::get('/billing',                  [BillingController::class, 'page'])->name('billing');
+        Route::post('/billing/checkout/{plan}', [BillingController::class, 'checkout'])->name('billing.checkout');
+        Route::post('/billing/swap/{plan}',     [BillingController::class, 'swap'])->name('billing.swap');
+        Route::get('/billing/success',          [BillingController::class, 'success'])->name('billing.success');
+        Route::get('/billing/portal',           [BillingController::class, 'portal'])->name('billing.portal');
+    });
 
     // Profilo: gestione passkey (aggiunta / rimozione dispositivi)
     Route::get('/profile/passkeys', function () use ($authProp) {
@@ -132,7 +146,7 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
     // -----------------------------------------------------------------------
     // Knowledge base — documenti (tenant legato all'utente autenticato)
     // -----------------------------------------------------------------------
-    Route::middleware('tenant.user')->group(function () {
+    Route::middleware(['tenant.user', 'subscribed'])->group(function () {
         Route::get('/knowledge',            [DocumentController::class, 'page'])->name('knowledge');
         Route::get('/documents',            [DocumentController::class, 'index'])->name('documents.index');
         Route::get('/documents/search',     [DocumentController::class, 'search'])->name('documents.search');

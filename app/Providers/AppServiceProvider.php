@@ -59,6 +59,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // --- FLASH MESSAGES CONDIVISI CON INERTIA ---
+        // Rende i messaggi flash (success/error) disponibili in ogni pagina Inertia
+        // come prop `flash`, così il frontend può mostrarli via Toast.
+        \Inertia\Inertia::share('flash', fn () => [
+            'success' => session('success'),
+            'error'   => session('error'),
+        ]);
+
         // --- GDPR: registra i model finanziari ---
         // I model finanziari hanno retention 7 anni — non vengono anonimizzati
         // immediatamente da GdprEraser. Aggiungili qui:

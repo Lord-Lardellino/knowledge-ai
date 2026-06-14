@@ -21,8 +21,9 @@ const mainNav: NavItem[] = [
 ]
 
 const securityNav: NavItem[] = [
-    { label: 'Passkey',        icon: 'pi pi-key',    href: '/profile/passkeys' },
-    { label: 'Autenticazione', icon: 'pi pi-shield', href: '/profile/totp' },
+    { label: 'Abbonamento',    icon: 'pi pi-credit-card', href: '/billing' },
+    { label: 'Passkey',        icon: 'pi pi-key',         href: '/profile/passkeys' },
+    { label: 'Autenticazione', icon: 'pi pi-shield',      href: '/profile/totp' },
 ]
 
 const currentPath = computed(() => {
