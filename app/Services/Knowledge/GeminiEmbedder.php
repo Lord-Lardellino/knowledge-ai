@@ -18,7 +18,7 @@ use RuntimeException;
  * Endpoint:
  *   POST {base}/models/{model}:batchEmbedContents?key=API_KEY
  */
-class GeminiEmbedder implements EmbeddingProvider
+class GeminiEmbedder
 {
     public function __construct(
         private ?string $apiKey = null,

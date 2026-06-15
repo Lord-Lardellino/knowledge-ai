@@ -2,9 +2,6 @@
 
 namespace App\Providers;
 
-use App\Services\Knowledge\BaaiEmbedder;
-use App\Services\Knowledge\EmbeddingProvider;
-use App\Services\Knowledge\GeminiEmbedder;
 use Illuminate\Support\ServiceProvider;
 use SaaS\Core\Security\Csp\SaasCorePreset;
 use Spatie\Csp\Policy;
@@ -36,13 +33,6 @@ class AppServiceProvider extends ServiceProvider
         // Registra la policy CSP di default del package.
         // Se non hai bisogno di personalizzarla, basta questa riga.
         $this->app->bind(Policy::class, fn () => Policy::create([SaasCorePreset::class]));
-
-        $this->app->singleton(EmbeddingProvider::class, function () {
-            return match (strtolower((string) config('knowledge.embedding.provider', 'gemini'))) {
-                'baai', 'bge', 'bge-m3', 'local' => app(BaaiEmbedder::class),
-                default => app(GeminiEmbedder::class),
-            };
-        });
 
         // --- CUSTOM CSP (opzionale) ---
         // Se il tuo SaaS usa servizi terzi (Stripe, AWS S3, Google Fonts, ecc.),
