@@ -16,6 +16,7 @@ const search = ref('')
 const mainNav: NavItem[] = [
     { label: 'Dashboard',      icon: 'pi pi-home',        href: '/dashboard' },
     { label: 'Knowledge Base', icon: 'pi pi-folder-open', href: '/knowledge' },
+    { label: 'Team',           icon: 'pi pi-users',       href: '/team' },
     { label: 'Chat AI',        icon: 'pi pi-comments',    soon: true },
     { label: 'Template AI',    icon: 'pi pi-sparkles',    soon: true },
 ]

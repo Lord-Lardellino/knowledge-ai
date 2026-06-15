@@ -70,6 +70,29 @@ class BillingController extends Controller
         return Inertia::location($checkout->url);
     }
 
+    /**
+     * Avvio post-registrazione: l'admin ha scelto un piano in fase di registrazione.
+     *   - base       → prova gratuita 14 giorni (nessun pagamento), entra subito
+     *   - pro/enterprise → checkout Stripe immediato (pagamento)
+     */
+    public function start(Request $request, string $plan): Response
+    {
+        if (! array_key_exists($plan, (array) config('saas-core.billing.plans'))) {
+            abort(404);
+        }
+
+        $tenant = $this->tenant($request);
+        $tenant->forceFill(['plan' => $plan])->save();
+
+        if ($plan === config('saas-core.billing.default_plan', 'base')) {
+            return redirect()->route('dashboard')
+                ->with('success', 'Prova gratuita di 14 giorni attivata. Benvenuto!');
+        }
+
+        // Piani superiori: pagamento subito.
+        return $this->checkout($request, $plan);
+    }
+
     /** Cambia piano su un abbonamento esistente (con guard downgrade). */
     public function swap(Request $request, string $plan): RedirectResponse
     {

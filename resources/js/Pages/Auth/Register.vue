@@ -7,14 +7,25 @@ import AuthSidePanel          from '@/Components/AuthSidePanel.vue'
 const name    = ref('')
 const email   = ref('')
 const company = ref('')
+const plan    = ref('base')
 
 const inviteToken = new URLSearchParams(window.location.search).get('invite') ?? ''
+
+// Piani selezionabili in fase di registrazione (solo per chi crea l'azienda).
+const plans = [
+    { key: 'base',       label: 'Base',       price: '19€/mese', note: '3 utenti · 14 giorni di prova gratuita' },
+    { key: 'pro',        label: 'Pro',        price: '49€/mese', note: '10 utenti' },
+    { key: 'enterprise', label: 'Enterprise', price: '149€/mese', note: '50 utenti' },
+]
 
 const { register, loading, error } = usePasskeyRegister()
 
 function handleRegister() {
-    // Dopo la registrazione l'admin sceglie il piano (pricing), poi entra.
-    register(name.value, email.value, '/billing', {
+    // Invito → entra nel workspace esistente (niente scelta piano).
+    // Altrimenti → dopo la registrazione: base = trial, pro/enterprise = checkout.
+    const redirect = inviteToken ? '/dashboard' : `/billing/start/${plan.value}`
+
+    register(name.value, email.value, redirect, {
         company:     company.value || undefined,
         inviteToken: inviteToken || undefined,
     })
@@ -68,6 +79,25 @@ function handleRegister() {
                     <label for="email" class="text-sm font-medium">Email</label>
                     <InputText id="email" v-model="email" type="email" placeholder="nome@azienda.com"
                         autocomplete="email" class="w-full" :disabled="loading" @keyup.enter="handleRegister" />
+                </div>
+
+                <!-- Scelta piano (solo per chi crea l'azienda) -->
+                <div v-if="!inviteToken" class="flex flex-col gap-2 mb-6">
+                    <label class="text-sm font-medium">Scegli il piano</label>
+                    <button v-for="p in plans" :key="p.key" type="button"
+                        class="flex items-center justify-between text-left px-3 py-2.5 rounded-lg border transition-colors"
+                        :class="plan === p.key
+                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-400/10'
+                            : 'border-surface-200 dark:border-surface-700 hover:border-primary-300'"
+                        :disabled="loading"
+                        @click="plan = p.key">
+                        <div>
+                            <div class="font-medium text-sm">{{ p.label }} <span class="text-surface-500 font-normal">· {{ p.price }}</span></div>
+                            <div class="text-xs text-surface-400">{{ p.note }}</div>
+                        </div>
+                        <i v-if="plan === p.key" class="pi pi-check-circle text-primary-500" />
+                        <i v-else class="pi pi-circle text-surface-300" />
+                    </button>
                 </div>
 
                 <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>

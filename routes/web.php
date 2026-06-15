@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use LaravelWebauthn\Models\WebauthnKey;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\TeamController;
 
 /**
  * Route Web — saas/core starter
@@ -104,6 +105,7 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
     // -----------------------------------------------------------------------
     Route::middleware('tenant.user')->group(function () {
         Route::get('/billing',                  [BillingController::class, 'page'])->name('billing');
+        Route::get('/billing/start/{plan}',     [BillingController::class, 'start'])->name('billing.start');
         Route::post('/billing/checkout/{plan}', [BillingController::class, 'checkout'])->name('billing.checkout');
         Route::post('/billing/swap/{plan}',     [BillingController::class, 'swap'])->name('billing.swap');
         Route::get('/billing/success',          [BillingController::class, 'success'])->name('billing.success');
@@ -153,6 +155,11 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
         Route::post('/documents',           [DocumentController::class, 'store'])->name('documents.store');
         Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
         Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+
+        // Team — gestione utenti e inviti (owner/admin)
+        Route::get('/team',                [TeamController::class, 'page'])->name('team');
+        Route::post('/team/invites',       [TeamController::class, 'invite'])->name('team.invites.store');
+        Route::delete('/team/invites/{id}', [TeamController::class, 'revoke'])->name('team.invites.revoke');
     });
 
 });
