@@ -16,6 +16,13 @@ class DocumentUploadTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('saas-core.billing.enabled', false);
+    }
+
     private function userInTenant(string $tenantName): User
     {
         $tenant = Tenant::create(['name' => $tenantName, 'slug' => str()->slug($tenantName)]);

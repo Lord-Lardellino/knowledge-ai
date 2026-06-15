@@ -31,7 +31,9 @@ return [
     'embedding' => [
         'model'      => env('KNOWLEDGE_EMBEDDING_MODEL', 'gemini-embedding-2'),
         'dimensions' => 1536,
-        'batch_size' => 100, // chunk per richiesta API
+        // null/0 = un'unica richiesta API per documento. Imposta un numero solo
+        // se il provider dovesse imporre un limite massimo di input per batch.
+        'batch_size' => env('KNOWLEDGE_EMBEDDING_BATCH_SIZE'),
     ],
 
     /*

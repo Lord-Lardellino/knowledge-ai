@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\ProcessDocument;
 use App\Models\Document;
 use App\Models\DocumentChunk;
+use App\Services\Knowledge\GeminiEmbedder;
 use App\Services\Knowledge\TextChunker;
 use App\Services\Knowledge\TextExtractor;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -49,6 +50,57 @@ class DocumentProcessingTest extends TestCase
 
         $this->assertNotEmpty($chunks);
         $this->assertStringContainsString('ferie', $chunks[0]);
+    }
+
+    public function test_pipeline_invia_tutti_i_chunk_in_un_unico_batch_embedding(): void
+    {
+        config()->set('knowledge.chunk_size', 120);
+        config()->set('knowledge.chunk_overlap', 0);
+        config()->set('knowledge.embedding.batch_size', null);
+
+        Storage::fake('local');
+
+        $body = implode("\n\n", array_map(
+            fn ($i) => str_repeat("Procedura reparto $i con contenuto operativo. ", 4),
+            range(1, 10),
+        ));
+
+        Storage::disk('local')->put('documents/1/test.txt', $body);
+        $doc = $this->makeDocument('txt', 'documents/1/test.txt');
+
+        $embedder = new class extends GeminiEmbedder {
+            public int $calls = 0;
+
+            /** @var int[] */
+            public array $batchSizes = [];
+
+            public function __construct()
+            {
+            }
+
+            public function embedDocuments(array $texts): array
+            {
+                $this->calls++;
+                $this->batchSizes[] = count($texts);
+
+                return array_map(
+                    fn () => array_fill(0, 1536, 0.001),
+                    $texts,
+                );
+            }
+        };
+
+        (new ProcessDocument($doc->id))->handle(
+            app(TextExtractor::class),
+            $embedder,
+        );
+
+        $doc->refresh();
+
+        $this->assertSame(Document::STATUS_INDEXED, $doc->status);
+        $this->assertGreaterThan(1, $doc->chunk_count);
+        $this->assertSame(1, $embedder->calls);
+        $this->assertSame([$doc->chunk_count], $embedder->batchSizes);
     }
 
     #[Group('gemini')]

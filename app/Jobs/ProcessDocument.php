@@ -77,9 +77,15 @@ class ProcessDocument implements ShouldQueue
         });
 
         // 4. Embedding in batch (Gemini Embedding 2) → salva i vettori
-        $batchSize = (int) config('knowledge.embedding.batch_size', 100);
+        $batchSize = $this->embeddingBatchSize(\count($chunks));
 
-        foreach (array_chunk(array_combine($ids, $chunks), $batchSize, true) as $batch) {
+        $chunkMap = array_combine($ids, $chunks);
+
+        if ($chunkMap === false) {
+            throw new \RuntimeException('Errore durante la preparazione dei chunk del documento.');
+        }
+
+        foreach (array_chunk($chunkMap, $batchSize, true) as $batch) {
             $vectors = $embedder->embedDocuments(array_values($batch));
 
             $i = 0;
@@ -100,6 +106,17 @@ class ProcessDocument implements ShouldQueue
             'indexed_at' => now(),
             'error'      => null,
         ]);
+    }
+
+    private function embeddingBatchSize(int $chunkCount): int
+    {
+        $configured = config('knowledge.embedding.batch_size');
+
+        if ($configured === null || $configured === '' || (int) $configured <= 0) {
+            return max(1, $chunkCount);
+        }
+
+        return max(1, (int) $configured);
     }
 
     public function failed(\Throwable $e): void
