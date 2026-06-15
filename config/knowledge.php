@@ -63,6 +63,17 @@ return [
     | La chiave deve combaciare con quella in saas-core.billing.plans.
     */
     'billing_plans' => [
+        'base' => [
+            'label'       => 'Base',
+            'price_label' => '19€ / mese',
+            'description' => 'Per iniziare. 14 giorni di prova gratuita.',
+            'features'    => [
+                'Fino a 3 utenti',
+                'Documenti illimitati',
+                'Ricerca semantica',
+            ],
+            'highlight'   => false,
+        ],
         'pro' => [
             'label'       => 'Pro',
             'price_label' => '49€ / mese',

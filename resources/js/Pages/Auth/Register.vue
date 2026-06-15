@@ -13,7 +13,8 @@ const inviteToken = new URLSearchParams(window.location.search).get('invite') ??
 const { register, loading, error } = usePasskeyRegister()
 
 function handleRegister() {
-    register(name.value, email.value, '/dashboard', {
+    // Dopo la registrazione l'admin sceglie il piano (pricing), poi entra.
+    register(name.value, email.value, '/billing', {
         company:     company.value || undefined,
         inviteToken: inviteToken || undefined,
     })
