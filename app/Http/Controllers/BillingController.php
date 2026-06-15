@@ -6,6 +6,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 use SaaS\Core\Billing\Exceptions\PlanDowngradeBlockedException;
 use SaaS\Core\Billing\TenantBilling;
 use SaaS\Core\Tenancy\Models\Tenant;
@@ -43,7 +44,7 @@ class BillingController extends Controller
     }
 
     /** Avvia il checkout Stripe ospitato per il piano scelto. */
-    public function checkout(Request $request, string $plan): InertiaResponse|RedirectResponse
+    public function checkout(Request $request, string $plan): Response
     {
         $tenant  = $this->tenant($request);
         $priceId = config("saas-core.billing.plans.{$plan}.price_id");
