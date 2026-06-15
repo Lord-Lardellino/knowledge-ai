@@ -20,6 +20,7 @@ interface Plan {
 const props = defineProps<{
     auth: { user: { name: string; email: string }; tenant?: { id: number; name: string } | null }
     plans:         Plan[]
+    isOwner:       boolean
     currentPlan:   string
     onTrial:       boolean
     trialDaysLeft: number
@@ -63,6 +64,12 @@ function openPortal (): void {
                 {{ seatsUsed }}/{{ seatLimit }} posti utilizzati
             </p>
         </div>
+
+        <!-- Solo l'owner gestisce l'abbonamento -->
+        <Message v-if="!isOwner" severity="warn" :closable="false">
+            <i class="pi pi-lock mr-2" />
+            Solo l'owner dell'azienda può gestire l'abbonamento. Contatta il tuo amministratore.
+        </Message>
 
         <!-- Banner trial -->
         <Message v-if="onTrial" severity="info" :closable="false">
@@ -113,14 +120,16 @@ function openPortal (): void {
                         severity="secondary"
                         outlined
                         class="w-full"
+                        :disabled="!isOwner"
                         @click="openPortal"
                     />
                     <Button
                         v-else
-                        :label="currentPlan === 'free' ? 'Abbonati' : 'Passa a ' + plan.label"
+                        :label="'Passa a ' + plan.label"
                         icon="pi pi-arrow-right"
                         iconPos="right"
                         class="w-full"
+                        :disabled="!isOwner"
                         @click="subscribe(plan)"
                     />
                 </template>

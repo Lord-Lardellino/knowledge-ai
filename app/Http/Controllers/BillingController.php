@@ -35,6 +35,7 @@ class BillingController extends Controller
                 'tenant' => ['id' => $tenant->id, 'name' => $tenant->name],
             ],
             'plans'        => $this->plansForDisplay(),
+            'isOwner'      => $this->isOwner($request),
             'currentPlan'  => $this->billing->planFor($tenant),
             'onTrial'      => $this->billing->onTrial($tenant),
             'trialDaysLeft'=> $this->billing->trialDaysLeft($tenant),
@@ -46,6 +47,7 @@ class BillingController extends Controller
     /** Avvia il checkout Stripe ospitato per il piano scelto. */
     public function checkout(Request $request, string $plan): Response
     {
+        $this->authorizeOwner($request);
         $tenant  = $this->tenant($request);
         $priceId = config("saas-core.billing.plans.{$plan}.price_id");
 
@@ -60,6 +62,13 @@ class BillingController extends Controller
         if ($tenant->subscribed($name)) {
             return $this->swap($request, $plan);
         }
+
+        // Crea/aggiorna il customer Stripe con l'email dell'admin: così su Stripe
+        // l'email risulta pre-compilata e BLOCCATA (non modificabile dall'utente).
+        $tenant->createOrGetStripeCustomer([
+            'email' => $request->user()->email,
+            'name'  => $tenant->name,
+        ]);
 
         $checkout = $tenant->newSubscription($name, $priceId)->checkout([
             'success_url' => route('billing.success') . '?session_id={CHECKOUT_SESSION_ID}',
@@ -77,6 +86,8 @@ class BillingController extends Controller
      */
     public function start(Request $request, string $plan): Response
     {
+        $this->authorizeOwner($request);
+
         if (! array_key_exists($plan, (array) config('saas-core.billing.plans'))) {
             abort(404);
         }
@@ -96,6 +107,7 @@ class BillingController extends Controller
     /** Cambia piano su un abbonamento esistente (con guard downgrade). */
     public function swap(Request $request, string $plan): RedirectResponse
     {
+        $this->authorizeOwner($request);
         $tenant = $this->tenant($request);
 
         try {
@@ -116,6 +128,8 @@ class BillingController extends Controller
     /** Portale Stripe per gestire abbonamento, metodi di pagamento, fatture. */
     public function portal(Request $request): RedirectResponse
     {
+        $this->authorizeOwner($request);
+
         return $this->tenant($request)->redirectToBillingPortal(route('billing'));
     }
 
@@ -123,6 +137,18 @@ class BillingController extends Controller
     private function tenant(Request $request): Tenant
     {
         return Tenant::findOrFail($request->user()->tenant_id);
+    }
+
+    /** L'utente è l'owner del tenant? Solo lui può gestire l'abbonamento. */
+    private function isOwner(Request $request): bool
+    {
+        return $request->user()->hasRole(config('saas-core.access.owner_role', 'owner'));
+    }
+
+    /** Solo l'owner può fare upgrade/checkout/gestione abbonamento. */
+    private function authorizeOwner(Request $request): void
+    {
+        abort_unless($this->isOwner($request), 403, "Solo l'owner dell'azienda può gestire l'abbonamento.");
     }
 
     /**

@@ -4883,12 +4883,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/webby-developers/saas-core.git",
-                "reference": "4146e1196fad4f7a4d9294d533a819bbb467d313"
+                "reference": "44ca782c51769ea0ed0f0702dca7c20f6cde1935"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/webby-developers/saas-core/zipball/4146e1196fad4f7a4d9294d533a819bbb467d313",
-                "reference": "4146e1196fad4f7a4d9294d533a819bbb467d313",
+                "url": "https://api.github.com/repos/webby-developers/saas-core/zipball/44ca782c51769ea0ed0f0702dca7c20f6cde1935",
+                "reference": "44ca782c51769ea0ed0f0702dca7c20f6cde1935",
                 "shasum": ""
             },
             "require": {
@@ -4943,7 +4943,7 @@
                 }
             ],
             "description": "Security core for SaaS applications — Auth, Tenancy, Access, Audit, Security headers",
-            "time": "2026-06-15T09:07:25+00:00"
+            "time": "2026-06-15T09:51:09+00:00"
         },
         {
             "name": "smalot/pdfparser",
