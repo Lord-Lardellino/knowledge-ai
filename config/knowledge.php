@@ -24,13 +24,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Embedding (Gemini Embedding 2)
+    | Embedding
     |--------------------------------------------------------------------------
-    | dimensions: troncato a 1536 per stare sotto il limite indici pgvector (2000).
+    | provider: gemini oppure baai.
+    | dimensions resta 1536 per compatibilità con la colonna pgvector attuale.
+    | BAAI/bge-m3 produce 1024 dimensioni: vengono paddate a 1536.
+    | Dopo cambio provider serve reindicizzare i documenti.
     */
     'embedding' => [
+        'provider'   => env('KNOWLEDGE_EMBEDDING_PROVIDER', 'baai'),
         'model'      => env('KNOWLEDGE_EMBEDDING_MODEL', 'gemini-embedding-2'),
-        'dimensions' => 1536,
+        'dimensions' => env('KNOWLEDGE_EMBEDDING_DIMENSIONS', 1536),
         // null/0 = un'unica richiesta API per documento. Imposta un numero solo
         // se il provider dovesse imporre un limite massimo di input per batch.
         'batch_size' => env('KNOWLEDGE_EMBEDDING_BATCH_SIZE'),
@@ -54,6 +58,18 @@ return [
     'gemini' => [
         'api_key'  => env('GEMINI_API_KEY'),
         'base_url' => env('GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | BAAI locale
+    |--------------------------------------------------------------------------
+    */
+    'baai' => [
+        'model'      => env('KNOWLEDGE_BAAI_MODEL', 'BAAI/bge-m3'),
+        'endpoint'   => env('KNOWLEDGE_BAAI_ENDPOINT', 'http://127.0.0.1:8765/embed'),
+        'batch_size' => env('KNOWLEDGE_BAAI_BATCH_SIZE', 8),
+        'timeout'    => env('KNOWLEDGE_BAAI_TIMEOUT', 900),
     ],
 
     /*

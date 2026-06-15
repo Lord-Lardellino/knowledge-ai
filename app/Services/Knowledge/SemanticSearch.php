@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
  */
 class SemanticSearch
 {
-    public function __construct(private GeminiEmbedder $embedder)
+    public function __construct(private EmbeddingProvider $embedder)
     {
     }
 

@@ -4,7 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Document;
 use App\Models\DocumentChunk;
-use App\Services\Knowledge\GeminiEmbedder;
+use App\Services\Knowledge\EmbeddingProvider;
 use App\Services\Knowledge\TextChunker;
 use App\Services\Knowledge\TextExtractor;
 use Illuminate\Bus\Queueable;
@@ -40,7 +40,7 @@ class ProcessDocument implements ShouldQueue
     {
     }
 
-    public function handle(TextExtractor $extractor, GeminiEmbedder $embedder): void
+    public function handle(TextExtractor $extractor, EmbeddingProvider $embedder): void
     {
         $document = Document::withoutGlobalScopes()->find($this->documentId);
 

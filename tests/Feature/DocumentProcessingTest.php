@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Jobs\ProcessDocument;
 use App\Models\Document;
 use App\Models\DocumentChunk;
+use App\Services\Knowledge\EmbeddingProvider;
 use App\Services\Knowledge\GeminiEmbedder;
 use App\Services\Knowledge\TextChunker;
 use App\Services\Knowledge\TextExtractor;
@@ -134,6 +135,9 @@ class DocumentProcessingTest extends TestCase
         if (! config('knowledge.gemini.api_key')) {
             $this->markTestSkipped('GEMINI_API_KEY non configurata: test di integrazione saltato.');
         }
+
+        config()->set('knowledge.embedding.provider', 'gemini');
+        app()->forgetInstance(EmbeddingProvider::class);
 
         Storage::fake('local');
         $tenant = Tenant::create(['name' => 'Acme', 'slug' => 'acme']);
