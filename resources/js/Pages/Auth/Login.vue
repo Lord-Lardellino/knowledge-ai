@@ -2,10 +2,18 @@
 import { ref }          from 'vue'
 import { Head }         from '@inertiajs/vue3'
 import { usePasskey }   from '@/composables/usePasskey'
+import { useZodForm }   from '@/composables/useZodForm'
+import { loginSchema }  from '@/validation/schemas'
 import AuthSidePanel    from '@/Components/AuthSidePanel.vue'
 
 const email = ref('')
 const { login, loading, error } = usePasskey()
+const { errors, validate, touch } = useZodForm(loginSchema, () => ({ email: email.value }))
+
+function submit() {
+    if (! validate({ email: email.value })) return
+    login(email.value)
+}
 </script>
 
 <template>
@@ -39,13 +47,15 @@ const { login, loading, error } = usePasskey()
                 <div class="flex flex-col gap-1.5 mb-4">
                     <label for="email" class="text-sm font-medium">Email</label>
                     <InputText id="email" v-model="email" type="email" placeholder="nome@azienda.com"
-                        autocomplete="email webauthn" class="w-full" :disabled="loading" @keyup.enter="login(email)" />
+                        autocomplete="email webauthn" class="w-full" :invalid="!!errors.email" :disabled="loading"
+                        @blur="touch('email')" @keyup.enter="submit" />
+                    <Message v-if="errors.email" severity="error" size="small" variant="simple">{{ errors.email }}</Message>
                 </div>
 
                 <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
 
                 <Button label="Accedi con passkey" icon="pi pi-fingerprint" class="w-full mb-3"
-                    :loading="loading" @click="login(email)" />
+                    :loading="loading" @click="submit" />
 
                 <p class="text-xs text-surface-400 text-center mb-8">
                     Useremo Face ID, Touch ID o Windows Hello — nessuna password.

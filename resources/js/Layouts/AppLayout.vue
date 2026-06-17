@@ -1,27 +1,54 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
+import { useTenantChannel } from '@/composables/useTenantChannel'
 
 const props = defineProps<{
-    auth: { user: { name: string; email: string }; tenant?: { name: string } }
+    auth: { user: { name: string; email: string }; tenant?: { id?: number; name: string } }
 }>()
 
-type NavItem = { label: string; icon: string; href?: string; soon?: boolean }
+type NavItem = { label: string; icon: string; href?: string; soon?: boolean; module?: string }
 
 const page = usePage()
 const drawerOpen = ref(false)
 const isDark = ref(true)
 const search = ref('')
 
-const mainNav: NavItem[] = [
+// Moduli attivi (condivisi via Inertia da AppServiceProvider).
+const modules = computed(() => (page.props.modules as Record<string, boolean> | undefined) ?? {})
+
+// Conteggi per i badge di notifica (es. documenti da smistare).
+const counts = computed(() => (page.props.counts as Record<string, number> | undefined) ?? {})
+
+// Override live del contatore "Da smistare" via real-time (null = usa quello server).
+const liveTriage = ref<number | null>(null)
+
+// Mappa href → conteggio badge da mostrare sulla voce nav.
+function navBadge (item: NavItem): number {
+    if (item.href === '/triage') return liveTriage.value ?? counts.value.triage ?? 0
+    return 0
+}
+
+// Real-time: aggiorna il badge "Da smistare" senza refresh.
+useTenantChannel(props.auth.tenant?.id, {
+    'triage.updated': (e: { count: number }) => { liveTriage.value = e.count },
+})
+
+const allMainNav: NavItem[] = [
     { label: 'Dashboard',      icon: 'pi pi-home',        href: '/dashboard' },
+    { label: 'Pratiche',       icon: 'pi pi-briefcase',   href: '/matters', module: 'legal' },
+    { label: 'Da smistare',    icon: 'pi pi-inbox',       href: '/triage',  module: 'legal' },
+    { label: 'Clienti',        icon: 'pi pi-id-card',     href: '/clients', module: 'legal' },
     { label: 'Knowledge Base', icon: 'pi pi-folder-open', href: '/knowledge' },
-    { label: 'Team',           icon: 'pi pi-users',       href: '/team' },
     { label: 'Chat AI',        icon: 'pi pi-comments',    soon: true },
     { label: 'Template AI',    icon: 'pi pi-sparkles',    soon: true },
 ]
 
+// Nasconde le voci legate a un modulo disattivo.
+const mainNav = computed(() => allMainNav.filter(i => !i.module || modules.value[i.module]))
+
 const securityNav: NavItem[] = [
+    { label: 'Team',           icon: 'pi pi-users',       href: '/team' },
     { label: 'Abbonamento',    icon: 'pi pi-credit-card', href: '/billing' },
     { label: 'Passkey',        icon: 'pi pi-key',         href: '/profile/passkeys' },
     { label: 'Autenticazione', icon: 'pi pi-shield',      href: '/profile/totp' },
@@ -104,6 +131,7 @@ onMounted(() => {
                                     @click="visit(item)">
                                     <i :class="item.icon" class="text-sm w-4 shrink-0" />
                                     <span class="flex-1">{{ item.label }}</span>
+                                    <Badge v-if="navBadge(item)" :value="navBadge(item)" severity="warn" />
                                     <span v-if="item.soon" class="text-[10px] font-semibold uppercase rounded px-1.5 py-0.5 bg-surface-100 dark:bg-surface-700 text-surface-400 dark:text-surface-500">Soon</span>
                                 </a>
                             </li>

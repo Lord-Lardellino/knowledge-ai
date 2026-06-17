@@ -13,7 +13,8 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'tenant.user' => \App\Http\Middleware\BindTenantFromUser::class,
+            'tenant.user'   => \App\Http\Middleware\BindTenantFromUser::class,
+            'legal.enabled' => \App\Http\Middleware\EnsureLegalModule::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

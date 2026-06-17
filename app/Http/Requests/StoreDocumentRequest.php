@@ -30,6 +30,9 @@ class StoreDocumentRequest extends FormRequest
                 'mimes:pdf,docx,xlsx,txt',
             ],
             'title' => ['nullable', 'string', 'max:255'],
+            // Pratica a cui agganciare il documento (verticale legale). Opzionale:
+            // l'appartenenza al tenant è verificata nel controller.
+            'matter_id' => ['nullable', 'integer'],
         ];
     }
 

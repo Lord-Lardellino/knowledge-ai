@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref }                from 'vue'
+import { ref, computed }      from 'vue'
 import { Head }               from '@inertiajs/vue3'
 import { usePasskeyRegister } from '@/composables/usePasskeyRegister'
+import { useZodForm }         from '@/composables/useZodForm'
+import { registerSchema, registerInviteSchema } from '@/validation/schemas'
 import AuthSidePanel          from '@/Components/AuthSidePanel.vue'
 
 const name    = ref('')
@@ -20,15 +22,47 @@ const plans = [
 
 const { register, loading, error } = usePasskeyRegister()
 
-function handleRegister() {
+// Finestra di conferma pre-registrazione (solo per chi crea l'azienda).
+const confirmOpen = ref(false)
+
+const selectedPlan = computed(() => plans.find(p => p.key === plan.value) ?? plans[0])
+const isDefaultPlan = computed(() => plan.value === 'base')
+
+const { errors, validate, touch } = useZodForm(
+    inviteToken ? registerInviteSchema : registerSchema,
+    () => inviteToken
+        ? { name: name.value, email: email.value }
+        : { name: name.value, email: email.value, company: company.value, plan: plan.value },
+)
+
+function onRegisterClick() {
+    const data = inviteToken
+        ? { name: name.value, email: email.value }
+        : { name: name.value, email: email.value, company: company.value, plan: plan.value }
+
+    if (! validate(data)) return
+
+    if (inviteToken) {
+        doRegister()        // invito: nessuna scelta piano, niente conferma
+        return
+    }
+    confirmOpen.value = true
+}
+
+function doRegister() {
     // Invito → entra nel workspace esistente (niente scelta piano).
-    // Altrimenti → dopo la registrazione: base = trial, pro/enterprise = checkout.
+    // Altrimenti → dopo la registrazione: base = trial Stripe, pro/enterprise = checkout.
     const redirect = inviteToken ? '/dashboard' : `/billing/start/${plan.value}`
 
     register(name.value, email.value, redirect, {
         company:     company.value || undefined,
         inviteToken: inviteToken || undefined,
     })
+}
+
+function confirmRegister() {
+    confirmOpen.value = false
+    doRegister()
 }
 </script>
 
@@ -65,20 +99,26 @@ function handleRegister() {
                 <div class="flex flex-col gap-1.5 mb-4">
                     <label for="name" class="text-sm font-medium">Nome completo</label>
                     <InputText id="name" v-model="name" type="text" placeholder="Mario Rossi"
-                        autocomplete="name" class="w-full" :disabled="loading" @keyup.enter="handleRegister" />
+                        autocomplete="name" class="w-full" :invalid="!!errors.name" :disabled="loading"
+                        @blur="touch('name')" @keyup.enter="onRegisterClick" />
+                    <Message v-if="errors.name" severity="error" size="small" variant="simple">{{ errors.name }}</Message>
                 </div>
 
                 <div v-if="!inviteToken" class="flex flex-col gap-1.5 mb-4">
                     <label for="company" class="text-sm font-medium">Nome azienda</label>
                     <InputText id="company" v-model="company" type="text" placeholder="Acme Srl"
-                        autocomplete="organization" class="w-full" :disabled="loading" @keyup.enter="handleRegister" />
-                    <small class="text-surface-400 text-xs">Crei lo spazio di lavoro: sarai l'amministratore.</small>
+                        autocomplete="organization" class="w-full" :invalid="!!errors.company" :disabled="loading"
+                        @blur="touch('company')" @keyup.enter="onRegisterClick" />
+                    <Message v-if="errors.company" severity="error" size="small" variant="simple">{{ errors.company }}</Message>
+                    <small v-else class="text-surface-400 text-xs">Crei lo spazio di lavoro: sarai l'amministratore.</small>
                 </div>
 
                 <div class="flex flex-col gap-1.5 mb-6">
                     <label for="email" class="text-sm font-medium">Email</label>
                     <InputText id="email" v-model="email" type="email" placeholder="nome@azienda.com"
-                        autocomplete="email" class="w-full" :disabled="loading" @keyup.enter="handleRegister" />
+                        autocomplete="email" class="w-full" :invalid="!!errors.email" :disabled="loading"
+                        @blur="touch('email')" @keyup.enter="onRegisterClick" />
+                    <Message v-if="errors.email" severity="error" size="small" variant="simple">{{ errors.email }}</Message>
                 </div>
 
                 <!-- Scelta piano (solo per chi crea l'azienda) -->
@@ -103,7 +143,7 @@ function handleRegister() {
                 <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>
 
                 <Button label="Registrati con passkey" icon="pi pi-fingerprint" class="w-full mb-3"
-                    :loading="loading" @click="handleRegister" />
+                    :loading="loading" @click="onRegisterClick" />
 
                 <p class="text-xs text-surface-400 text-center mb-8">
                     Face ID, Touch ID o Windows Hello — nessuna password da impostare.
@@ -118,6 +158,35 @@ function handleRegister() {
 
             </div>
         </div>
+
+        <!-- Conferma piano prima della registrazione -->
+        <Dialog v-model:visible="confirmOpen" modal header="Conferma il piano" :style="{ width: '28rem' }"
+            :breakpoints="{ '640px': '95vw' }">
+            <div class="flex flex-col gap-4">
+                <div class="flex items-center justify-between rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2.5">
+                    <div>
+                        <div class="font-medium text-sm">{{ selectedPlan.label }}</div>
+                        <div class="text-xs text-surface-400">{{ selectedPlan.price }}</div>
+                    </div>
+                    <i class="pi pi-check-circle text-primary-500" />
+                </div>
+
+                <Message v-if="isDefaultPlan" severity="info" :closable="false" class="text-sm">
+                    Prova gratuita di 14 giorni, poi addebito automatico. Su Stripe ti verrà chiesta
+                    la carta e l'email <strong>{{ email || 'inserita' }}</strong> sarà bloccata: non potrai
+                    pagare con un'altra email.
+                </Message>
+                <Message v-else severity="warn" :closable="false" class="text-sm">
+                    Pagamento immediato e attivazione subito. Su Stripe l'email
+                    <strong>{{ email || 'inserita' }}</strong> sarà bloccata.
+                </Message>
+            </div>
+
+            <template #footer>
+                <Button label="Annulla" severity="secondary" text @click="confirmOpen = false" />
+                <Button label="Conferma e registrati" icon="pi pi-fingerprint" :loading="loading" @click="confirmRegister" />
+            </template>
+        </Dialog>
 
     </div>
 </template>

@@ -21,6 +21,14 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // --- TELESCOPE (solo dev) ---
+        // Telescope è dipendenza dev: registriamo il provider solo se la classe
+        // esiste, così in produzione (--no-dev) non rompe nulla.
+        if ($this->app->environment('local') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+            $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
+            $this->app->register(\App\Providers\TelescopeServiceProvider::class);
+        }
+
         // --- TENANT CONTEXT DEFAULT ---
         // Il TenantScope di saas-core legge app('current.tenant.id'). In HTTP lo
         // bindano SetTenant / BindTenantFromUser, ma in job/comandi/test no:
@@ -66,6 +74,25 @@ class AppServiceProvider extends ServiceProvider
             'success' => session('success'),
             'error'   => session('error'),
         ]);
+
+        // --- MODULO LEGALE (verticale Pratiche) ---
+        // Espone lo stato del modulo a ogni pagina Inertia, così la UI può
+        // nascondere la voce di menu "Pratiche" quando il modulo è disattivo.
+        \Inertia\Inertia::share('modules', fn () => [
+            'legal' => (bool) config('knowledge.legal.enabled'),
+        ]);
+
+        // Conteggi per la UI (badge nav). triage = documenti senza pratica:
+        // notifica permanente finché non vengono smistati.
+        \Inertia\Inertia::share('counts', function () {
+            if (! config('knowledge.legal.enabled')
+                || ! app()->bound('current.tenant.id')
+                || ! app('current.tenant.id')) {
+                return ['triage' => 0];
+            }
+
+            return ['triage' => \App\Models\Document::whereNull('matter_id')->count()];
+        });
 
         // --- GDPR: registra i model finanziari ---
         // I model finanziari hanno retention 7 anni — non vengono anonimizzati

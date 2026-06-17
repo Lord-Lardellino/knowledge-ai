@@ -7,6 +7,9 @@ use LaravelWebauthn\Models\WebauthnKey;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\TeamController;
+use App\Http\Controllers\ClientController;
+use App\Http\Controllers\PartyController;
+use App\Http\Controllers\MatterController;
 
 /**
  * Route Web — saas/core starter
@@ -160,6 +163,37 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
         Route::get('/team',                [TeamController::class, 'page'])->name('team');
         Route::post('/team/invites',       [TeamController::class, 'invite'])->name('team.invites.store');
         Route::delete('/team/invites/{id}', [TeamController::class, 'revoke'])->name('team.invites.revoke');
+
+        // -------------------------------------------------------------------
+        // Verticale legale — Pratiche (modulo attivabile via 'legal.enabled')
+        // -------------------------------------------------------------------
+        Route::middleware('legal.enabled')->group(function () {
+            Route::get('/triage', [DocumentController::class, 'triage'])->name('documents.triage');
+
+            Route::get('/matters',                [MatterController::class, 'page'])->name('matters');
+            Route::post('/matters/from-documents', [MatterController::class, 'storeFromDocuments'])->name('matters.fromDocuments');
+            Route::post('/matters',               [MatterController::class, 'store'])->name('matters.store');
+            Route::post('/matters/{matter}/documents', [MatterController::class, 'attachDocuments'])->name('matters.attachDocuments');
+            Route::get('/matters/{matter}',       [MatterController::class, 'show'])->name('matters.show');
+            Route::put('/matters/{matter}',       [MatterController::class, 'update'])->name('matters.update');
+            Route::delete('/matters/{matter}',    [MatterController::class, 'destroy'])->name('matters.destroy');
+            Route::post('/matters/{matter}/suggestions', [MatterController::class, 'applySuggestion'])->name('matters.suggestions');
+
+            // Clienti — anagrafica (pagine Inertia) + options/store/update (JSON per i select)
+            Route::get('/clients',          [ClientController::class, 'page'])->name('clients');
+            Route::get('/clients/options',  [ClientController::class, 'options'])->name('clients.options');
+            Route::get('/clients/lookup',   [ClientController::class, 'lookup'])->name('clients.lookup');
+            Route::post('/clients',         [ClientController::class, 'store'])->name('clients.store');
+            Route::get('/clients/{client}', [ClientController::class, 'show'])->name('clients.show');
+            Route::put('/clients/{client}', [ClientController::class, 'update'])->name('clients.update');
+
+            Route::get('/parties',  [PartyController::class, 'index'])->name('parties.index');
+            Route::post('/parties', [PartyController::class, 'store'])->name('parties.store');
+
+            // Metadati legali estratti dall'AI (Fase 2)
+            Route::put('/documents/{document}/metadata',       [DocumentController::class, 'updateMetadata'])->name('documents.metadata.update');
+            Route::post('/documents/{document}/metadata/retry', [DocumentController::class, 'reextractMetadata'])->name('documents.metadata.retry');
+        });
     });
 
 });

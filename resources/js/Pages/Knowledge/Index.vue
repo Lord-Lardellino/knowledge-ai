@@ -5,6 +5,7 @@ import { useConfirm }      from 'primevue/useconfirm'
 import AppLayout           from '@/Layouts/AppLayout.vue'
 import DocumentStatusTag   from '@/Components/DocumentStatusTag.vue'
 import { useDocuments }    from '@/composables/useDocuments'
+import { useTenantChannel } from '@/composables/useTenantChannel'
 import type { DocumentEntry } from '@/composables/useDocuments'
 
 defineOptions({ layout: AppLayout })
@@ -18,6 +19,19 @@ const toast   = useToast()
 const confirm = useConfirm()
 
 const { documents, uploading, error, upload, remove, reload } = useDocuments(props.initialDocuments)
+
+// Real-time: aggiorna lo stato dei documenti in lista senza refresh.
+useTenantChannel(props.auth.tenant?.id, {
+    'document.updated': (e: { id: number; status: string; chunk_count: number }) => {
+        const doc = documents.value.find(d => d.id === e.id)
+        if (doc) {
+            doc.status = e.status as DocumentEntry['status']
+            doc.chunk_count = e.chunk_count
+        } else {
+            reload() // nuovo documento non ancora in lista
+        }
+    },
+})
 
 // FileUpload in modalità custom: gestiamo noi l'invio, un file alla volta.
 async function onUpload (event: { files: File[] }): Promise<void> {
@@ -93,6 +107,7 @@ function formatDate (iso: string): string {
                     accept=".pdf,.docx,.xlsx,.txt"
                     :showUploadButton="false"
                     :showCancelButton="false"
+                    :previewWidth="0"
                     @uploader="onUpload"
                 >
                     <template #empty>

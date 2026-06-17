@@ -9,6 +9,18 @@ return [
     */
     'max_upload_mb' => env('KNOWLEDGE_MAX_UPLOAD_MB', 25),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Verticale legale (modulo Pratiche)
+    |--------------------------------------------------------------------------
+    | Modulo attivabile/disattivabile. Per ora flag globale locale; in futuro
+    | potrà leggere una feature di piano dal Tenant (saas-core) senza cambiare
+    | il middleware 'legal.enabled' che lo applica.
+    */
+    'legal' => [
+        'enabled' => env('KNOWLEDGE_LEGAL_ENABLED', true),
+    ],
+
     // Disco Storage dove salvare i file dei documenti (storage/app/private di default).
     'disk' => env('KNOWLEDGE_DISK', 'local'),
 
@@ -44,6 +56,28 @@ return [
     'generation' => [
         'simple'  => env('KNOWLEDGE_MODEL_SIMPLE', 'gemma-4-26b'),
         'complex' => env('KNOWLEDGE_MODEL_COMPLEX', 'gemma-4-31b'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Estrazione metadati legali (Fase 2 verticale legale)
+    |--------------------------------------------------------------------------
+    | Modello usato per estrarre metadati strutturati dai documenti e numero
+    | massimo di caratteri di testo inviati al modello (controllo costi/token).
+    */
+    // Modello flash-lite: il più economico che onora responseMimeType/responseSchema
+    // (i Gemma ignorano il JSON mode e producono testo non strutturato).
+    'metadata' => [
+        'model'         => env('KNOWLEDGE_METADATA_MODEL', 'gemini-2.5-flash-lite'),
+        // 8k caratteri bastano per i metadati (tipo, parti, date, importi stanno nelle
+        // prime pagine): meno token in input. Alzabile via .env se serve più contesto.
+        'max_chars'     => (int) env('KNOWLEDGE_METADATA_MAX_CHARS', 8000),
+        'temperature'   => (float) env('KNOWLEDGE_METADATA_TEMPERATURE', 0.2),
+        // Tetto sull'output (i metadati JSON sono piccoli): blocca risposte lunghe.
+        'max_output_tokens' => (int) env('KNOWLEDGE_METADATA_MAX_OUTPUT_TOKENS', 1200),
+        // Token di "thinking" dei modelli 2.5 (fatturati come output): 0 = disattivati.
+        // Per un'estrazione strutturata non servono e sono la voce di costo maggiore.
+        'thinking_budget'   => (int) env('KNOWLEDGE_METADATA_THINKING_BUDGET', 0),
     ],
 
     /*

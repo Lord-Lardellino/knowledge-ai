@@ -8,6 +8,7 @@ import ToastService             from 'primevue/toastservice'
 import ConfirmationService      from 'primevue/confirmationservice'
 import Tooltip                  from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
+import './echo'                  // bootstrap Laravel Echo (Reverb) — window.Echo
 
 // Tema: colore primario teal tramite token nativi della palette PrimeVue.
 const SapioTheme = definePreset(Aura, {

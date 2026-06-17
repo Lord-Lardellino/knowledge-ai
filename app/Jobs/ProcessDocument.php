@@ -49,6 +49,7 @@ class ProcessDocument implements ShouldQueue
         }
 
         $document->update(['status' => Document::STATUS_PROCESSING]);
+        \App\Support\Realtime::document($document);
 
         // 1. Estrazione testo dal file (PDF/DOCX/XLSX/TXT)
         $text = $extractor->extract($document);
@@ -106,6 +107,13 @@ class ProcessDocument implements ShouldQueue
             'indexed_at' => now(),
             'error'      => null,
         ]);
+        \App\Support\Realtime::document($document);
+
+        // 6. Estrazione metadati legali (verticale legale) — solo se il modulo
+        //    è attivo. Job separato per isolare i fallimenti AI dalla pipeline.
+        if (config('knowledge.legal.enabled')) {
+            ExtractDocumentMetadata::dispatch($document->id);
+        }
     }
 
     private function embeddingBatchSize(int $chunkCount): int
@@ -127,5 +135,9 @@ class ProcessDocument implements ShouldQueue
                 'status' => Document::STATUS_FAILED,
                 'error'  => $e->getMessage(),
             ]);
+
+        if ($document = Document::withoutGlobalScopes()->find($this->documentId)) {
+            \App\Support\Realtime::document($document);
+        }
     }
 }

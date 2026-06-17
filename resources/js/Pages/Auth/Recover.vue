@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { ref }        from 'vue'
-import { Head }       from '@inertiajs/vue3'
-import AuthSidePanel  from '@/Components/AuthSidePanel.vue'
+import { ref }         from 'vue'
+import { Head }        from '@inertiajs/vue3'
+import { useZodForm }  from '@/composables/useZodForm'
+import { recoverSchema } from '@/validation/schemas'
+import AuthSidePanel   from '@/Components/AuthSidePanel.vue'
 
 const email   = ref('')
 const loading = ref(false)
 const error   = ref<string | null>(null)
 const sent    = ref(false)
 
+const { errors, validate, touch } = useZodForm(recoverSchema, () => ({ email: email.value }))
+
 async function sendRecoveryLink(): Promise<void> {
-    if (!email.value) { error.value = 'Inserisci la tua email.'; return }
+    if (! validate({ email: email.value })) return
 
     loading.value = true
     error.value   = null
@@ -90,7 +94,9 @@ async function sendRecoveryLink(): Promise<void> {
                     <div class="flex flex-col gap-1.5 mb-6">
                         <label for="email" class="text-sm font-medium">Email</label>
                         <InputText id="email" v-model="email" type="email" placeholder="nome@azienda.com"
-                            autocomplete="email" class="w-full" :disabled="loading" @keyup.enter="sendRecoveryLink" />
+                            autocomplete="email" class="w-full" :invalid="!!errors.email" :disabled="loading"
+                            @blur="touch('email')" @keyup.enter="sendRecoveryLink" />
+                        <Message v-if="errors.email" severity="error" size="small" variant="simple">{{ errors.email }}</Message>
                     </div>
 
                     <Message v-if="error" severity="error" :closable="false" class="mb-4">{{ error }}</Message>

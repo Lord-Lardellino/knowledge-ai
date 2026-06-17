@@ -11,6 +11,9 @@
     "require":  {
         "php": "^8.3",
         "laravel/framework": "^13.8",
+        "laravel/horizon": "^5.47",
+        "laravel/pulse": "^1.7",
+        "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "phpoffice/phpspreadsheet": "^5.8",
         "phpoffice/phpword": "^1.4",
@@ -18,14 +21,15 @@
         "smalot/pdfparser": "^2.12"
     },
     "require-dev":  {
-                        "fakerphp/faker":  "^1.23",
-                        "laravel/pail":  "^1.2.5",
-                        "laravel/pao":  "^1.0.6",
-                        "laravel/pint":  "^1.27",
-                        "mockery/mockery":  "^1.6",
-                        "nunomaduro/collision":  "^8.6",
-                        "phpunit/phpunit":  "^12.5.12"
-                    },
+        "fakerphp/faker": "^1.23",
+        "laravel/pail": "^1.2.5",
+        "laravel/pao": "^1.0.6",
+        "laravel/pint": "^1.27",
+        "laravel/telescope": "^5.20",
+        "mockery/mockery": "^1.6",
+        "nunomaduro/collision": "^8.6",
+        "phpunit/phpunit": "^12.5.12"
+    },
     "autoload":  {
                      "psr-4":  {
                                    "App\\":  "app/",
@@ -77,7 +81,7 @@
     "extra":  {
                   "laravel":  {
                                   "dont-discover":  [
-
+                                                        "laravel/telescope"
                                                     ]
                               }
               },
@@ -91,7 +95,11 @@
                                      },
                    "github-protocols":  [
                                             "https"
-                                        ]
+                                        ],
+        "platform": {
+            "ext-pcntl": "8.3",
+            "ext-posix": "8.3"
+        }
                },
     "minimum-stability":  "stable",
     "prefer-stable":  true,

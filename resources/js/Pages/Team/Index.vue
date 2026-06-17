@@ -4,6 +4,8 @@ import { Head, router, usePage } from '@inertiajs/vue3'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import { useZodForm } from '@/composables/useZodForm'
+import { teamInviteSchema } from '@/validation/schemas'
 
 defineOptions({ layout: AppLayout })
 
@@ -30,6 +32,8 @@ const lastLink = ref<string | null>(null)
 
 const seatsFull = computed(() => props.seatsUsed >= props.seatLimit)
 
+const { errors, validate, touch } = useZodForm(teamInviteSchema, () => ({ email: email.value, role: role.value }))
+
 const roleOptions = computed(() =>
     props.invitableRoles.map(r => ({ label: r.charAt(0).toUpperCase() + r.slice(1), value: r }))
 )
@@ -39,7 +43,7 @@ function csrf (): string {
 }
 
 async function sendInvite (): Promise<void> {
-    if (!email.value) return
+    if (! validate({ email: email.value, role: role.value })) return
     loading.value = true
     lastLink.value = null
 
@@ -125,12 +129,16 @@ const roleSeverity: Record<string, string> = { owner: 'warn', admin: 'info', use
         <Card>
             <template #title>Invita un collega</template>
             <template #content>
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <InputText v-model="email" type="email" placeholder="collega@azienda.com"
-                        class="flex-1" :disabled="loading || seatsFull" @keyup.enter="sendInvite" />
+                <div class="flex flex-col sm:flex-row gap-3 items-start">
+                    <div class="flex-1 w-full">
+                        <InputText v-model="email" type="email" placeholder="collega@azienda.com"
+                            class="w-full" :invalid="!!errors.email" :disabled="loading || seatsFull"
+                            @blur="touch('email')" @keyup.enter="sendInvite" />
+                        <Message v-if="errors.email" severity="error" size="small" variant="simple">{{ errors.email }}</Message>
+                    </div>
                     <Select v-model="role" :options="roleOptions" optionLabel="label" optionValue="value"
                         class="sm:w-40" :disabled="loading || seatsFull" />
-                    <Button label="Invita" icon="pi pi-send" :loading="loading" :disabled="seatsFull || !email"
+                    <Button label="Invita" icon="pi pi-send" :loading="loading" :disabled="seatsFull"
                         @click="sendInvite" />
                 </div>
 

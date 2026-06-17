@@ -101,7 +101,10 @@ export function usePasskeyRegister () {
             }
 
             const body = await registerRes.json().catch(() => ({}))
-            const target = typeof body.redirect === 'string' ? body.redirect : redirectTo
+            // L'intento del chiamante (redirectTo, es. /billing/start/{plan}) ha la
+            // precedenza sul redirect generico del server (redirect_after_login):
+            // serve a mandare il nuovo iscritto al checkout del piano scelto.
+            const target = redirectTo || (typeof body.redirect === 'string' ? body.redirect : '/dashboard')
 
             window.location.assign(target)
 
