@@ -24,6 +24,27 @@ return [
     // Disco Storage dove salvare i file dei documenti (storage/app/private di default).
     'disk' => env('KNOWLEDGE_DISK', 'local'),
 
+    'viewer' => [
+        'libreoffice_bin' => env('KNOWLEDGE_LIBREOFFICE_BIN'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Similarità documenti (confronto "Simili")
+    |--------------------------------------------------------------------------
+    | Il coseno fra embedding ha un "pavimento" alto fra atti dello stesso
+    | dominio/cliente (intestazioni, parti ricorrenti): da solo gonfia il
+    | punteggio. Lo fondiamo con la similarità lessicale trigram (pg_trgm) come
+    | media geometrica pesata — così i documenti che condividono solo il
+    | boilerplate si sgonfiano, mentre i veri quasi-duplicati restano alti.
+    |   punteggio = semantico^w_sem * lessicale^w_lex   (w_sem + w_lex = 1)
+    */
+    'similarity' => [
+        'lexical_blend'   => (bool) env('KNOWLEDGE_SIM_LEXICAL_BLEND', true),
+        'semantic_weight' => (float) env('KNOWLEDGE_SIM_SEMANTIC_WEIGHT', 0.5),
+        'lexical_weight'  => (float) env('KNOWLEDGE_SIM_LEXICAL_WEIGHT', 0.5),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Chunking
@@ -69,12 +90,12 @@ return [
     // (i Gemma ignorano il JSON mode e producono testo non strutturato).
     'metadata' => [
         'model'         => env('KNOWLEDGE_METADATA_MODEL', 'gemini-2.5-flash-lite'),
-        // 8k caratteri bastano per i metadati (tipo, parti, date, importi stanno nelle
-        // prime pagine): meno token in input. Alzabile via .env se serve più contesto.
-        'max_chars'     => (int) env('KNOWLEDGE_METADATA_MAX_CHARS', 8000),
+        // 14k caratteri con campionamento intelligente aiutano i metadati (tipo, parti, date, importi stanno nelle
+        // anche quando non compaiono nelle prime pagine. Alzabile via .env se serve.
+        'max_chars'     => (int) env('KNOWLEDGE_METADATA_MAX_CHARS', 14000),
         'temperature'   => (float) env('KNOWLEDGE_METADATA_TEMPERATURE', 0.2),
         // Tetto sull'output (i metadati JSON sono piccoli): blocca risposte lunghe.
-        'max_output_tokens' => (int) env('KNOWLEDGE_METADATA_MAX_OUTPUT_TOKENS', 1200),
+        'max_output_tokens' => (int) env('KNOWLEDGE_METADATA_MAX_OUTPUT_TOKENS', 1800),
         // Token di "thinking" dei modelli 2.5 (fatturati come output): 0 = disattivati.
         // Per un'estrazione strutturata non servono e sono la voce di costo maggiore.
         'thinking_budget'   => (int) env('KNOWLEDGE_METADATA_THINKING_BUDGET', 0),

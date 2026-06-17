@@ -34,8 +34,9 @@ useTenantChannel(props.auth.tenant?.id, {
 })
 
 // FileUpload in modalità custom: gestiamo noi l'invio, un file alla volta.
-async function onUpload (event: { files: File[] }): Promise<void> {
-    for (const file of event.files) {
+async function onUpload (event: { files: File | File[] }): Promise<void> {
+    const files = Array.isArray(event.files) ? event.files : [event.files]
+    for (const file of files) {
         const ok = await upload(file)
         if (ok) {
             toast.add({ severity: 'success', summary: 'Caricato', detail: `${file.name} è in elaborazione.`, life: 4000 })

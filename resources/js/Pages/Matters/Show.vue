@@ -9,6 +9,7 @@ import MatterFormDialog from '@/Components/MatterFormDialog.vue'
 import DocumentStatusTag from '@/Components/DocumentStatusTag.vue'
 import MetadataStatusTag from '@/Components/MetadataStatusTag.vue'
 import DocumentMetadataDialog from '@/Components/DocumentMetadataDialog.vue'
+import DocumentCompareDialog from '@/Components/DocumentCompareDialog.vue'
 import { useTenantChannel } from '@/composables/useTenantChannel'
 import type { MatterEntry, MatterType } from '@/composables/useMatters'
 import type { DocumentMetadata, MetadataStatus } from '@/composables/useDocumentMetadata'
@@ -43,6 +44,7 @@ const confirm = useConfirm()
 
 const editOpen  = ref(false)
 const uploading = ref(false)
+const compareOpen = ref(false)
 
 // Revisione metadati legali (Fase 2).
 const metaOpen   = ref(false)
@@ -118,9 +120,10 @@ useTenantChannel(props.auth.tenant?.id, {
 })
 
 // Upload contestualizzato: il documento nasce già agganciato a questa pratica.
-async function onUpload (event: { files: File[] }): Promise<void> {
+async function onUpload (event: { files: File | File[] }): Promise<void> {
+    const files = Array.isArray(event.files) ? event.files : [event.files]
     uploading.value = true
-    for (const file of event.files) {
+    for (const file of files) {
         const form = new FormData()
         form.append('file', file)
         form.append('matter_id', String(props.matter.id))
@@ -266,14 +269,24 @@ function csrf (): string {
         <!-- Documenti della pratica -->
         <Card>
             <template #title>
-                <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center justify-between gap-2">
                     <span>Documenti</span>
-                    <FileUpload
-                        mode="basic" name="file" :auto="true" customUpload
-                        accept=".pdf,.docx,.xlsx,.txt" :showUploadButton="false" :showCancelButton="false"
-                        chooseLabel="Carica" chooseIcon="pi pi-upload"
-                        :disabled="uploading" @uploader="onUpload"
-                    />
+                    <div class="flex items-center gap-2">
+                        <Button
+                            label="Confronta"
+                            icon="pi pi-code"
+                            severity="secondary"
+                            outlined
+                            :disabled="matter.documents.filter(d => d.status === 'indexed' && d.chunk_count > 0).length < 2"
+                            @click="compareOpen = true"
+                        />
+                        <FileUpload
+                            mode="basic" name="file" :auto="true" customUpload
+                            accept=".pdf,.docx,.xlsx,.txt" :showUploadButton="false" :showCancelButton="false"
+                            chooseLabel="Carica" chooseIcon="pi pi-upload"
+                            :disabled="uploading" @uploader="onUpload"
+                        />
+                    </div>
                 </div>
             </template>
             <template #content>
@@ -330,6 +343,11 @@ function csrf (): string {
         <DocumentMetadataDialog
             v-model:visible="metaOpen"
             :document="metaDoc"
+        />
+
+        <DocumentCompareDialog
+            v-model:visible="compareOpen"
+            :documents="matter.documents"
         />
     </div>
 </template>

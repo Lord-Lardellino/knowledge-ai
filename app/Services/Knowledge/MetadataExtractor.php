@@ -30,9 +30,9 @@ class MetadataExtractor
         $this->apiKey          ??= (string) config('knowledge.gemini.api_key');
         $this->model           ??= (string) config('knowledge.metadata.model');
         $this->baseUrl         ??= rtrim((string) config('knowledge.gemini.base_url'), '/');
-        $this->maxChars        ??= (int) config('knowledge.metadata.max_chars', 8000);
+        $this->maxChars        ??= (int) config('knowledge.metadata.max_chars', 14000);
         $this->temperature     ??= (float) config('knowledge.metadata.temperature', 0.2);
-        $this->maxOutputTokens ??= (int) config('knowledge.metadata.max_output_tokens', 1200);
+        $this->maxOutputTokens ??= (int) config('knowledge.metadata.max_output_tokens', 1800);
         $this->thinkingBudget  ??= (int) config('knowledge.metadata.thinking_budget', 0);
     }
 
@@ -55,7 +55,7 @@ class MetadataExtractor
             throw new RuntimeException('GEMINI_API_KEY non configurata.');
         }
 
-        $text = trim(mb_substr($text, 0, $this->maxChars));
+        $text = $this->sampleText($text);
         if ($text === '') {
             return $this->blank();
         }
@@ -95,6 +95,30 @@ class MetadataExtractor
     }
 
     /**
+     * Usa il budget caratteri su inizio, centro e fine del documento.
+     * Nei legali cliente/controparti spesso stanno in intestazione, corpo o firma:
+     * solo i primi caratteri dopo l'ottimizzazione tagliavano troppo contesto utile.
+     */
+    private function sampleText(string $text): string
+    {
+        $text = trim(preg_replace("/\n{3,}/u", "\n\n", str_replace(["\r\n", "\r"], "\n", $text)) ?? $text);
+
+        if ($text === '' || mb_strlen($text) <= $this->maxChars) {
+            return $text;
+        }
+
+        $first = (int) floor($this->maxChars * 0.50);
+        $middle = (int) floor($this->maxChars * 0.20);
+        $last = $this->maxChars - $first - $middle;
+        $length = mb_strlen($text);
+        $middleStart = max(0, (int) floor(($length - $middle) / 2));
+
+        return trim(implode("\n\n[... parte centrale del documento ...]\n\n", [
+            mb_substr($text, 0, $first),
+            mb_substr($text, $middleStart, $middle),
+        ]) . "\n\n[... parte finale del documento ...]\n\n" . mb_substr($text, -$last));
+    }
+    /**
      * Prompt in italiano: compatto per minimizzare i token in input. Lo schema è
      * su una riga e le indicazioni per campo non duplicano la struttura.
      */
@@ -108,7 +132,7 @@ class MetadataExtractor
         return <<<PROMPT
         Assistente legale IT. Estrai i metadati dal DOCUMENTO e restituisci SOLO questo JSON (niente testo/markdown attorno; array vuoti se mancano; date YYYY-MM-DD; importi numerici senza separatori, valuta ISO):
         {$schema}
-        Regole: document_type ∈ {contratto,atto,diffida,sentenza,decreto,email,procura,visura,fattura,memoria,altro}; summary 1-3 frasi fattuali; parties con ruolo (cliente/controparte/attore/convenuto/terzo); citations = norme citate; risks = criticità per il cliente. Non inventare dati assenti.
+        Regole: document_type ∈ {contratto,atto,diffida,sentenza,decreto,email,procura,visura,fattura,memoria,altro}; summary 1-3 frasi fattuali; parties = tutte le parti nominate con ruolo breve. Se dal testo è deducibile il cliente/assistito/mandante/ricorrente/attore/creditore dello studio usa ruolo "cliente" o "assistito"; per l altra parte usa "controparte", "convenuto", "debitore" ecc. citations = norme citate; risks = criticità per il cliente. Non inventare dati assenti.
         DOCUMENTO:
         {$text}
         PROMPT;

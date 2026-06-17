@@ -12,26 +12,26 @@ use App\Http\Controllers\PartyController;
 use App\Http\Controllers\MatterController;
 
 /**
- * Route Web — saas/core starter
+ * Route Web - saas/core starter
  *
  * MIDDLEWARE DISPONIBILI:
- *   security.headers  → X-Frame-Options, HSTS, Referrer-Policy, Permissions-Policy
- *   session.hardener  → scade sessione dopo inattività, protegge da session hijacking
- *   totp              → richiede TOTP verificato (se utente ha 2FA attivo)
- *   tenant            → SetTenant: filtra query per tenant_id (multi-tenancy)
- *   role:admin        → RequireRole: solo utenti con quel ruolo
+ *   security.headers  -> X-Frame-Options, HSTS, Referrer-Policy, Permissions-Policy
+ *   session.hardener  -> scade sessione dopo inattivita, protegge da session hijacking
+ *   totp              -> richiede TOTP verificato (se utente ha 2FA attivo)
+ *   tenant            -> SetTenant: filtra query per tenant_id (multi-tenancy)
+ *   role:admin        -> RequireRole: solo utenti con quel ruolo
  *
- * Le route passkey (challenge/verify/register) sono già registrate dal ServiceProvider.
- * Le route TOTP (profile/totp/*, auth/totp/*) sono già registrate dal ServiceProvider.
- * Le route recovery (recover, recover/verify) sono già registrate dal ServiceProvider.
+ * Le route passkey (challenge/verify/register) sono gia registrate dal ServiceProvider.
+ * Le route TOTP (profile/totp/*, auth/totp/*) sono gia registrate dal ServiceProvider.
+ * Le route recovery (recover, recover/verify) sono gia registrate dal ServiceProvider.
  */
 
 // ---------------------------------------------------------------------------
-// Digital Asset Links (Android) — autorizza l'app a usare le passkey su
+// Digital Asset Links (Android) - autorizza l'app a usare le passkey su
 // questo dominio. Configura nel .env:
 //   ANDROID_PACKAGE_NAME=com.tuaazienda.tuaapp
-//   ANDROID_SHA256_FINGERPRINTS=AA:BB:...  (virgola per più chiavi)
-// NOTA: config() e non env() — env() restituisce null con config:cache attivo.
+//   ANDROID_SHA256_FINGERPRINTS=AA:BB:...  (virgola per piu chiavi)
+// NOTA: config() e non env() - env() restituisce null con config:cache attivo.
 // ---------------------------------------------------------------------------
 Route::get('/.well-known/assetlinks.json', function () {
     return response()->json([[
@@ -48,7 +48,7 @@ Route::get('/.well-known/assetlinks.json', function () {
 })->withoutMiddleware(['security.headers']);
 
 // ---------------------------------------------------------------------------
-// Apple App Site Association (iOS) — equivalente di assetlinks per le passkey
+// Apple App Site Association (iOS) - equivalente di assetlinks per le passkey
 // native iOS (associated domains "webcredentials:"). Configura nel .env:
 //   IOS_APP_ID=TEAMID.com.tuaazienda.tuaapp
 // Apple richiede Content-Type application/json e NESSUN redirect.
@@ -97,13 +97,13 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
         ];
     };
 
-    // Dashboard — richiede tenant attivo (trial o abbonamento) via 'subscribed'.
+    // Dashboard - richiede tenant attivo (trial o abbonamento) via 'subscribed'.
     Route::get('/dashboard', function () use ($authProp) {
         return Inertia::render('Dashboard', ['auth' => $authProp()]);
     })->middleware(['tenant.user', 'subscribed'])->name('dashboard');
 
     // -----------------------------------------------------------------------
-    // Billing — pricing, checkout, gestione abbonamento.
+    // Billing - pricing, checkout, gestione abbonamento.
     // NON sotto 'subscribed' (qui ci arriva chi NON ha accesso, niente loop).
     // -----------------------------------------------------------------------
     Route::middleware('tenant.user')->group(function () {
@@ -149,23 +149,28 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
     })->name('logout');
 
     // -----------------------------------------------------------------------
-    // Knowledge base — documenti (tenant legato all'utente autenticato)
+    // Knowledge base - documenti (tenant legato all'utente autenticato)
     // -----------------------------------------------------------------------
     Route::middleware(['tenant.user', 'subscribed'])->group(function () {
         Route::get('/knowledge',            [DocumentController::class, 'page'])->name('knowledge');
         Route::get('/documents',            [DocumentController::class, 'index'])->name('documents.index');
         Route::get('/documents/search',     [DocumentController::class, 'search'])->name('documents.search');
+        Route::post('/documents/compare',  [DocumentController::class, 'compare'])->name('documents.compare');
         Route::post('/documents',           [DocumentController::class, 'store'])->name('documents.store');
+        Route::get('/documents/{document}/similar', [DocumentController::class, 'similar'])->name('documents.similar');
+        Route::get('/documents/{document}/text-preview', [DocumentController::class, 'textPreview'])->name('documents.textPreview');
+        Route::get('/documents/{document}/viewer', [DocumentController::class, 'viewer'])->withoutMiddleware(['security.headers'])->name('documents.viewer');
+        Route::get('/documents/{document}/preview', [DocumentController::class, 'preview'])->withoutMiddleware(['security.headers'])->name('documents.preview');
         Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
         Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
 
-        // Team — gestione utenti e inviti (owner/admin)
+        // Team - gestione utenti e inviti (owner/admin)
         Route::get('/team',                [TeamController::class, 'page'])->name('team');
         Route::post('/team/invites',       [TeamController::class, 'invite'])->name('team.invites.store');
         Route::delete('/team/invites/{id}', [TeamController::class, 'revoke'])->name('team.invites.revoke');
 
         // -------------------------------------------------------------------
-        // Verticale legale — Pratiche (modulo attivabile via 'legal.enabled')
+        // Verticale legale - Pratiche (modulo attivabile via 'legal.enabled')
         // -------------------------------------------------------------------
         Route::middleware('legal.enabled')->group(function () {
             Route::get('/triage', [DocumentController::class, 'triage'])->name('documents.triage');
@@ -179,7 +184,7 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
             Route::delete('/matters/{matter}',    [MatterController::class, 'destroy'])->name('matters.destroy');
             Route::post('/matters/{matter}/suggestions', [MatterController::class, 'applySuggestion'])->name('matters.suggestions');
 
-            // Clienti — anagrafica (pagine Inertia) + options/store/update (JSON per i select)
+            // Clienti - anagrafica (pagine Inertia) + options/store/update (JSON per i select)
             Route::get('/clients',          [ClientController::class, 'page'])->name('clients');
             Route::get('/clients/options',  [ClientController::class, 'options'])->name('clients.options');
             Route::get('/clients/lookup',   [ClientController::class, 'lookup'])->name('clients.lookup');
@@ -197,3 +202,4 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
     });
 
 });
+
