@@ -40,6 +40,7 @@ interface AlignBlock {
     text: string
     kind: 'identical' | 'similar' | 'unique'
     link: number | null
+    topic: string | null
 }
 
 interface DiffResult {
@@ -97,8 +98,15 @@ function focusLink (link: number | null): void {
     if (link === null) return
     activeLink.value = link
     nextTick(() => {
-        document.querySelectorAll(`[data-link="${link}"]`).forEach((el) => {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Scorre ogni colonna nel PROPRIO contenitore fino al passaggio collegato,
+        // così cliccando l'originale il documento confrontato va sul gemello (e viceversa).
+        document.querySelectorAll<HTMLElement>(`[data-link="${link}"]`).forEach((el) => {
+            const scroller = el.closest<HTMLElement>('.overflow-auto')
+            if (!scroller) return
+            const top = scroller.scrollTop
+                + el.getBoundingClientRect().top - scroller.getBoundingClientRect().top
+                - scroller.clientHeight / 2 + el.clientHeight / 2
+            scroller.scrollTo({ top, behavior: 'smooth' })
         })
     })
 }
@@ -481,36 +489,42 @@ function csrf(): string {
                         </div>
                         <template v-else-if="result">
                             <div class="flex flex-wrap items-center gap-3 border-b border-surface-200 px-4 py-2 text-xs dark:border-surface-800">
-                                <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-emerald-300 dark:bg-emerald-500/50" /> Identico</span>
-                                <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-amber-300 dark:bg-amber-500/50" /> Simile</span>
+                                <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-emerald-300 dark:bg-emerald-500/50" /> Stesso passaggio</span>
+                                <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-amber-300 dark:bg-amber-500/50" /> Stesso argomento</span>
                                 <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-surface-200 dark:bg-surface-700" /> Solo qui</span>
-                                <span class="ml-auto text-surface-500">Clicca un passaggio per saltare al suo gemello nell'altro documento.</span>
+                                <span class="ml-auto text-surface-500">Affinità per significato (per le parole uguali usa Git diff). Clicca un passaggio per saltare al gemello.</span>
                             </div>
                             <div class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden xl:grid-cols-2">
                                 <div class="flex min-h-0 flex-col border-b border-surface-200 dark:border-surface-800 xl:border-b-0 xl:border-r">
                                     <p class="truncate border-b border-surface-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:border-surface-800">{{ baseDocument?.title }}</p>
                                     <div class="min-h-0 flex-1 space-y-1.5 overflow-auto p-3">
-                                        <p
+                                        <div
                                             v-for="(block, i) in result.alignment.base"
                                             :key="`b-${i}`"
                                             :data-link="block.link ?? undefined"
                                             class="rounded-md px-2.5 py-1.5 text-sm leading-relaxed transition-shadow"
                                             :class="blockClass(block)"
                                             @click="focusLink(block.link)"
-                                        >{{ block.text }}</p>
+                                        >
+                                            <Tag v-if="block.topic && block.kind !== 'unique'" :value="block.topic" severity="warn" class="mb-1 text-[10px]" />
+                                            <p class="m-0">{{ block.text }}</p>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="flex min-h-0 flex-col">
                                     <p class="truncate border-b border-surface-200 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:border-surface-800">{{ selected.title }}</p>
                                     <div class="min-h-0 flex-1 space-y-1.5 overflow-auto p-3">
-                                        <p
+                                        <div
                                             v-for="(block, i) in result.alignment.target"
                                             :key="`t-${i}`"
                                             :data-link="block.link ?? undefined"
                                             class="rounded-md px-2.5 py-1.5 text-sm leading-relaxed transition-shadow"
                                             :class="blockClass(block)"
                                             @click="focusLink(block.link)"
-                                        >{{ block.text }}</p>
+                                        >
+                                            <Tag v-if="block.topic && block.kind !== 'unique'" :value="block.topic" severity="warn" class="mb-1 text-[10px]" />
+                                            <p class="m-0">{{ block.text }}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

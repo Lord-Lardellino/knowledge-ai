@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { Head }            from '@inertiajs/vue3'
+import { computed, onUnmounted, watch } from 'vue'
 import { useToast }        from 'primevue/usetoast'
 import { useConfirm }      from 'primevue/useconfirm'
 import AppLayout           from '@/Layouts/AppLayout.vue'
-import DocumentStatusTag   from '@/Components/DocumentStatusTag.vue'
+import DocumentProgress    from '@/Components/DocumentProgress.vue'
 import { useDocuments }    from '@/composables/useDocuments'
 import { useTenantChannel } from '@/composables/useTenantChannel'
 import type { DocumentEntry } from '@/composables/useDocuments'
@@ -22,16 +23,38 @@ const { documents, uploading, error, upload, remove, reload } = useDocuments(pro
 
 // Real-time: aggiorna lo stato dei documenti in lista senza refresh.
 useTenantChannel(props.auth.tenant?.id, {
-    'document.updated': (e: { id: number; status: string; chunk_count: number }) => {
+    'document.updated': (e: { id: number; status: string; chunk_count: number; embedded_chunks?: number; metadata_status?: DocumentEntry['metadata_status'] }) => {
         const doc = documents.value.find(d => d.id === e.id)
         if (doc) {
             doc.status = e.status as DocumentEntry['status']
             doc.chunk_count = e.chunk_count
+            if (e.embedded_chunks !== undefined) doc.embedded_chunks = e.embedded_chunks
+            if (e.metadata_status !== undefined) doc.metadata_status = e.metadata_status
         } else {
             reload() // nuovo documento non ancora in lista
         }
     },
 })
+
+// Auto-poll di fallback: finché ci sono documenti in lavorazione (indicizzazione o
+// metadati) ricarica periodicamente. Fa avanzare la barra anche senza Reverb (locale).
+const hasWork = computed(() => documents.value.some(d =>
+    d.status === 'pending' || d.status === 'processing'
+    || d.metadata_status === 'pending' || d.metadata_status === 'processing',
+))
+
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+watch(hasWork, (work) => {
+    if (work && pollTimer === null) {
+        pollTimer = setInterval(() => { void reload() }, 2500)
+    } else if (!work && pollTimer !== null) {
+        clearInterval(pollTimer)
+        pollTimer = null
+    }
+}, { immediate: true })
+
+onUnmounted(() => { if (pollTimer !== null) clearInterval(pollTimer) })
 
 // FileUpload in modalità custom: gestiamo noi l'invio, un file alla volta.
 async function onUpload (event: { files: File | File[] }): Promise<void> {
@@ -144,7 +167,7 @@ function formatDate (iso: string): string {
 
                     <Column field="status" header="Stato" sortable>
                         <template #body="{ data }">
-                            <DocumentStatusTag :status="data.status" />
+                            <DocumentProgress :doc="data" />
                         </template>
                     </Column>
 

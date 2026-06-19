@@ -3,9 +3,14 @@
 namespace App\Services\Knowledge;
 
 use App\Models\Document;
+use Illuminate\Support\Facades\DB;
 
 class DocumentComparer
 {
+    // Soglie di affinità semantica fra chunk (coseno) per la vista "Evidenzia".
+    private const SIM_IDENTICAL = 0.93; // praticamente lo stesso passaggio
+    private const SIM_SIMILAR   = 0.78; // stesso argomento, parole diverse
+
     private const MAX_BLOCKS = 800;
     private const MAX_BLOCK_CHARS = 2000;
     private const CONTEXT = 3;
@@ -28,7 +33,9 @@ class DocumentComparer
 
         $rows = $this->diffRows($baseBlocks, $targetBlocks);
         $hunks = $this->hunks($rows);
-        $alignment = $this->alignment($rows);
+        // Evidenzia: allineamento SEMANTICO (per argomento) sugli embedding dei chunk.
+        // Le parole identiche restano nella vista Git diff (rows/hunks).
+        $alignment = $this->semanticAlignment($base, $target);
 
         return [
             'base' => [
@@ -53,106 +60,153 @@ class DocumentComparer
     }
 
     /**
-     * Allineamento passaggio-per-passaggio per la vista "Evidenzia": ogni blocco
-     * dei due documenti è classificato identical|similar|unique e i gemelli
-     * condividono un `link` per la navigazione collegata.
+     * Allineamento SEMANTICO per la vista "Evidenzia": per ogni chunk del documento
+     * base trova il chunk più affine del target tramite il coseno degli embedding
+     * (già salvati: nessuna chiamata AI). Classifica identical|similar|unique e
+     * collega i gemelli, etichettando l'argomento condiviso. Le parole identiche
+     * restano alla vista Git diff.
      *
-     * @param array<int,array{type:string,text:string}> $rows
-     * @return array{base:array<int,array{text:string,kind:string,link:int|null}>, target:array<int,array{text:string,kind:string,link:int|null}>}
+     * @return array{base:array<int,array>, target:array<int,array>}
      */
-    private function alignment(array $rows): array
+    private function semanticAlignment(Document $base, Document $target): array
     {
-        $base = [];
-        $target = [];
+        $baseChunks = $this->chunksWithBestMatch($base->id, $target->id);
+
+        $targetChunks = DB::table('document_chunks')
+            ->where('document_id', $target->id)
+            ->orderBy('chunk_index')
+            ->pluck('content', 'chunk_index');
+
+        $baseOut = [];
+        $targetMatch = []; // chunk_index target => dati del match
         $link = 0;
 
-        // Identici dall'LCS; raccolgo gli indici dei blocchi non appaiati.
-        $baseOnly = [];
-        $targetOnly = [];
+        foreach ($baseChunks as $row) {
+            $sim = $row->sim !== null ? (float) $row->sim : null;
+            $kind = 'unique';
+            $thisLink = null;
+            $topic = null;
 
-        foreach ($rows as $row) {
-            if ($row['type'] === 'context') {
-                $base[] = ['text' => $row['text'], 'kind' => 'identical', 'link' => $link];
-                $target[] = ['text' => $row['text'], 'kind' => 'identical', 'link' => $link];
-                $link++;
-            } elseif ($row['type'] === 'removed') {
-                $baseOnly[] = count($base);
-                $base[] = ['text' => $row['text'], 'kind' => 'unique', 'link' => null];
-            } else { // added
-                $targetOnly[] = count($target);
-                $target[] = ['text' => $row['text'], 'kind' => 'unique', 'link' => null];
+            if ($sim !== null && $sim >= self::SIM_SIMILAR) {
+                $kind = $sim >= self::SIM_IDENTICAL ? 'identical' : 'similar';
+                $thisLink = $link++;
+                $topic = $this->topicLabel((string) $row->b_content, (string) $row->t_content);
+                $targetMatch[$row->t_idx] = ['link' => $thisLink, 'kind' => $kind, 'topic' => $topic];
             }
+
+            $baseOut[] = [
+                'text'  => (string) $row->b_content,
+                'kind'  => $kind,
+                'link'  => $thisLink,
+                'topic' => $topic,
+            ];
         }
 
-        // Match "simile" fra i blocchi rimasti: Jaccard su bigrammi di parole.
-        // Guardia di costo: salta se il prodotto degli avanzi è troppo grande.
-        if ($baseOnly !== [] && $targetOnly !== [] && count($baseOnly) * count($targetOnly) <= 60000) {
-            $baseSets = [];
-            foreach ($baseOnly as $bi) {
-                $baseSets[$bi] = $this->tokenSet($base[$bi]['text']);
-            }
-
-            $usedTarget = [];
-            foreach ($baseOnly as $bi) {
-                $bestTi = null;
-                $bestScore = 0.45; // soglia minima per considerare due passaggi "simili"
-
-                foreach ($targetOnly as $ti) {
-                    if (isset($usedTarget[$ti])) {
-                        continue;
-                    }
-                    $score = $this->jaccard($baseSets[$bi], $this->tokenSet($target[$ti]['text']));
-                    if ($score > $bestScore) {
-                        $bestScore = $score;
-                        $bestTi = $ti;
-                    }
-                }
-
-                if ($bestTi !== null) {
-                    $usedTarget[$bestTi] = true;
-                    $base[$bi]['kind'] = 'similar';
-                    $base[$bi]['link'] = $link;
-                    $target[$bestTi]['kind'] = 'similar';
-                    $target[$bestTi]['link'] = $link;
-                    $link++;
-                }
-            }
+        $targetOut = [];
+        foreach ($targetChunks as $idx => $content) {
+            $m = $targetMatch[$idx] ?? null;
+            $targetOut[] = [
+                'text'  => (string) $content,
+                'kind'  => $m['kind'] ?? 'unique',
+                'link'  => $m['link'] ?? null,
+                'topic' => $m['topic'] ?? null,
+            ];
         }
 
-        return ['base' => $base, 'target' => $target];
-    }
-
-    /** Insieme di parole + bigrammi normalizzati di un blocco (per Jaccard). */
-    private function tokenSet(string $text): array
-    {
-        $words = preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        $set = [];
-        $count = count($words);
-        for ($i = 0; $i < $count; $i++) {
-            $set[$words[$i]] = true;
-            if ($i + 1 < $count) {
-                $set[$words[$i] . ' ' . $words[$i + 1]] = true;
-            }
-        }
-
-        return $set;
+        return ['base' => $baseOut, 'target' => $targetOut];
     }
 
     /**
-     * @param array<string,bool> $a
-     * @param array<string,bool> $b
+     * Per ogni chunk del base, il chunk più vicino del target (coseno pgvector).
+     *
+     * @return array<int,object>
      */
-    private function jaccard(array $a, array $b): float
+    private function chunksWithBestMatch(int $baseId, int $targetId): array
     {
-        if ($a === [] || $b === []) {
-            return 0.0;
+        return DB::select(
+            <<<SQL
+            SELECT b.chunk_index AS b_idx, b.content AS b_content,
+                   t.t_idx, t.t_content, t.sim
+            FROM document_chunks b
+            LEFT JOIN LATERAL (
+                SELECT tc.chunk_index AS t_idx, tc.content AS t_content,
+                       1 - (tc.embedding <=> b.embedding) AS sim
+                FROM document_chunks tc
+                WHERE tc.document_id = ? AND tc.embedding IS NOT NULL
+                ORDER BY tc.embedding <=> b.embedding
+                LIMIT 1
+            ) t ON true
+            WHERE b.document_id = ? AND b.embedding IS NOT NULL
+            ORDER BY b.chunk_index
+            SQL,
+            [$targetId, $baseId]
+        );
+    }
+
+    /** Etichetta dell'argomento condiviso: parole significative comuni ai due passaggi. */
+    private function topicLabel(string $a, string $b): ?string
+    {
+        $wa = $this->significantWords($a);
+        $wb = $this->significantWords($b);
+        $common = array_intersect_key($wa, $wb);
+
+        if ($common === []) {
+            return null;
         }
 
-        $intersection = count(array_intersect_key($a, $b));
-        $union = count($a + $b);
+        // Ordina per frequenza combinata, poi per lunghezza (parole più specifiche).
+        uksort($common, function (string $x, string $y) use ($wa, $wb): int {
+            return ($wb[$y] + $wa[$y]) <=> ($wb[$x] + $wa[$x])
+                ?: mb_strlen($y) <=> mb_strlen($x);
+        });
 
-        return $union > 0 ? $intersection / $union : 0.0;
+        $top = array_slice(array_keys($common), 0, 3);
+
+        return ucfirst(implode(', ', $top));
     }
+
+    /**
+     * Parole "di contenuto" (>=4 lettere, non stopword né termine giuridico
+     * generico) con frequenza, per dedurre l'argomento.
+     *
+     * @return array<string,int>
+     */
+    private function significantWords(string $text): array
+    {
+        $words = preg_split('/[^\p{L}]+/u', mb_strtolower($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $freq = [];
+
+        foreach ($words as $w) {
+            if (mb_strlen($w) < 4 || isset(self::STOPWORDS[$w])) {
+                continue;
+            }
+            $freq[$w] = ($freq[$w] ?? 0) + 1;
+        }
+
+        return $freq;
+    }
+
+    /** Stopword italiane + termini giuridici troppo generici per fare "argomento". */
+    private const STOPWORDS = [
+        'della' => true, 'delle' => true, 'degli' => true, 'dello' => true, 'dell' => true,
+        'sono' => true, 'come' => true, 'anche' => true, 'questo' => true, 'questa' => true,
+        'quello' => true, 'quella' => true, 'essere' => true, 'stato' => true, 'stata' => true,
+        'nella' => true, 'nelle' => true, 'negli' => true, 'nello' => true, 'dopo' => true,
+        'prima' => true, 'secondo' => true, 'ogni' => true, 'tutti' => true, 'tutto' => true,
+        'tutte' => true, 'quale' => true, 'quali' => true, 'sulla' => true, 'sullo' => true,
+        'sugli' => true, 'sulle' => true, 'dalla' => true, 'dalle' => true, 'dagli' => true,
+        'fatto' => true, 'parte' => true, 'parti' => true, 'altri' => true, 'altre' => true,
+        'mentre' => true, 'perche' => true, 'quindi' => true, 'inoltre' => true, 'ossia' => true,
+        // generici giuridici
+        'corte' => true, 'cassazione' => true, 'sentenza' => true, 'articolo' => true,
+        'comma' => true, 'legge' => true, 'ricorso' => true, 'giudice' => true, 'tribunale' => true,
+        'sezione' => true, 'numero' => true, 'pubblica' => true, 'italiano' => true, 'popolo' => true,
+        // firma digitale / intestazioni PDF (rumore, non sono "argomenti")
+        'trustpro' => true, 'qualified' => true, 'serial' => true, 'firmato' => true,
+        'emesso' => true, 'data' => true, 'pubblicazione' => true, 'registro' => true,
+        'sezionale' => true, 'raccolta' => true, 'generale' => true, 'composta' => true,
+        'magistrati' => true, 'pronunciato' => true, 'seguente' => true,
+    ];
 
     private function documentText(Document $document): string
     {

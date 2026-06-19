@@ -33,14 +33,19 @@ return [
     | Similarità documenti (confronto "Simili")
     |--------------------------------------------------------------------------
     | Il coseno fra embedding ha un "pavimento" alto fra atti dello stesso
-    | dominio/cliente (intestazioni, parti ricorrenti): da solo gonfia il
-    | punteggio. Lo fondiamo con la similarità lessicale trigram (pg_trgm) come
-    | media geometrica pesata — così i documenti che condividono solo il
-    | boilerplate si sgonfiano, mentre i veri quasi-duplicati restano alti.
-    |   punteggio = semantico^w_sem * lessicale^w_lex   (w_sem + w_lex = 1)
+    | dominio (lessico giuridico comune): atti fuori tema restano ~0.83-0.86,
+    | mentre quelli davvero affini salgono a ~0.95+. Calibriamo rimappando
+    | l'intervallo utile [floor, ceil] su [0%, 100%]: così "più argomenti in
+    | comune = % più alta" e gli atti non pertinenti scendono vicino a 0.
+    | I valori dipendono dal modello di embedding: tarabili via .env.
+    |
+    | lexical_blend (default OFF): se attivo fonde col trigram pg_trgm — utile
+    | per la caccia ai duplicati testuali, ma penalizza lo stesso-tema-parole-diverse.
     */
     'similarity' => [
-        'lexical_blend'   => (bool) env('KNOWLEDGE_SIM_LEXICAL_BLEND', true),
+        'floor' => (float) env('KNOWLEDGE_SIM_FLOOR', 0.83),
+        'ceil'  => (float) env('KNOWLEDGE_SIM_CEIL', 0.97),
+        'lexical_blend'   => (bool) env('KNOWLEDGE_SIM_LEXICAL_BLEND', false),
         'semantic_weight' => (float) env('KNOWLEDGE_SIM_SEMANTIC_WEIGHT', 0.5),
         'lexical_weight'  => (float) env('KNOWLEDGE_SIM_LEXICAL_WEIGHT', 0.5),
     ],

@@ -138,7 +138,7 @@ class MetadataExtractor
         PROMPT;
     }
 
-    /** Decodifica robusta: gestisce eventuali code fence o testo attorno al JSON. */
+    /** Decodifica robusta: fence, testo attorno e JSON troncato dal limite token. */
     private function decode(string $raw): array
     {
         $raw = trim($raw);
@@ -164,7 +164,73 @@ class MetadataExtractor
             }
         }
 
-        throw new RuntimeException('Risposta del modello non in formato JSON valido.');
+        // Ripara il JSON troncato (output tagliato dal limite di token): chiude
+        // stringhe/parentesi rimaste aperte e ritenta. Recupera i metadati parziali.
+        $repaired = $this->repairTruncatedJson($raw);
+        if ($repaired !== null) {
+            return $repaired;
+        }
+
+        // Ultima istanza: non far fallire il documento per un parsing andato male.
+        // Metadati vuoti = ri-estraibili dal bottone, ma il documento resta usabile.
+        return [];
+    }
+
+    /**
+     * Tenta di rendere valido un JSON troncato: scandisce i caratteri tenendo conto
+     * delle stringhe, taglia all'ultima posizione fuori-stringa e richiude le
+     * parentesi ancora aperte. Ritorna l'array o null se irrecuperabile.
+     */
+    private function repairTruncatedJson(string $raw): ?array
+    {
+        $start = strpos($raw, '{');
+        if ($start === false) {
+            return null;
+        }
+
+        $s = substr($raw, $start);
+        $len = strlen($s);
+        $stack = [];
+        $inString = false;
+        $escaped = false;
+        $lastSafe = 0;
+
+        for ($i = 0; $i < $len; $i++) {
+            $c = $s[$i];
+
+            if ($inString) {
+                if ($escaped) {
+                    $escaped = false;
+                } elseif ($c === '\\') {
+                    $escaped = true;
+                } elseif ($c === '"') {
+                    $inString = false;
+                    $lastSafe = $i + 1;
+                }
+                continue;
+            }
+
+            if ($c === '"') {
+                $inString = true;
+            } elseif ($c === '{' || $c === '[') {
+                $stack[] = $c === '{' ? '}' : ']';
+                $lastSafe = $i + 1;
+            } elseif ($c === '}' || $c === ']') {
+                array_pop($stack);
+                $lastSafe = $i + 1;
+            } elseif (! ctype_space($c)) {
+                $lastSafe = $i + 1;
+            }
+        }
+
+        // Taglia all'ultimo punto sicuro, rimuove separatori penzolanti e richiude.
+        $candidate = rtrim(substr($s, 0, $lastSafe));
+        $candidate = preg_replace('/[,:]\s*$/', '', $candidate) ?? $candidate;
+        $candidate .= implode('', array_reverse($stack));
+
+        $decoded = json_decode($candidate, true);
+
+        return is_array($decoded) ? $decoded : null;
     }
 
     /** Forza la struttura stabile, scartando campi inattesi. */

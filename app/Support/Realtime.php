@@ -20,6 +20,7 @@ class Realtime
             'id'              => $document->id,
             'status'          => $document->status,
             'chunk_count'     => (int) $document->chunk_count,
+            'embedded_chunks' => (int) $document->embedded_chunks,
             'metadata_status' => $document->metadata_status,
             'matter_id'       => $document->matter_id,
         ]);

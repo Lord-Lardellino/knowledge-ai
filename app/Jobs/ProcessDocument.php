@@ -77,7 +77,9 @@ class ProcessDocument implements ShouldQueue
             return $ids;
         });
 
-        // 4. Embedding in batch (Gemini Embedding 2) → salva i vettori
+        // 4. Embedding in batch (Gemini Embedding 2) → salva i vettori.
+        //    Avanzamento: aggiorniamo embedded_chunks dopo ogni batch così la barra
+        //    di progressione sale (e con Reverb attivo si vede in tempo reale).
         $batchSize = $this->embeddingBatchSize(\count($chunks));
 
         $chunkMap = array_combine($ids, $chunks);
@@ -85,6 +87,9 @@ class ProcessDocument implements ShouldQueue
         if ($chunkMap === false) {
             throw new \RuntimeException('Errore durante la preparazione dei chunk del documento.');
         }
+
+        $document->update(['embedded_chunks' => 0]);
+        $done = 0;
 
         foreach (array_chunk($chunkMap, $batchSize, true) as $batch) {
             $vectors = $embedder->embedDocuments(array_values($batch));
@@ -99,6 +104,10 @@ class ProcessDocument implements ShouldQueue
                     ->update(['embedding' => $literal]);
                 $i++;
             }
+
+            $done += \count($batch);
+            $document->update(['embedded_chunks' => $done]);
+            \App\Support\Realtime::document($document);
         }
 
         // 5. Indicizzato
@@ -116,12 +125,16 @@ class ProcessDocument implements ShouldQueue
         }
     }
 
+    // Batch di embedding: mai "tutti in una richiesta" (un documento da centinaia
+    // di chunk satura il modello → 503/timeout). Default prudente a 100, override via config.
+    private const DEFAULT_EMBED_BATCH = 100;
+
     private function embeddingBatchSize(int $chunkCount): int
     {
         $configured = config('knowledge.embedding.batch_size');
 
         if ($configured === null || $configured === '' || (int) $configured <= 0) {
-            return max(1, $chunkCount);
+            return max(1, min($chunkCount, self::DEFAULT_EMBED_BATCH));
         }
 
         return max(1, (int) $configured);

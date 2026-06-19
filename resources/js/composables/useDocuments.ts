@@ -13,6 +13,7 @@ import { router } from '@inertiajs/vue3'
  */
 
 export type DocumentStatus = 'pending' | 'processing' | 'indexed' | 'failed'
+export type MetadataStatus = 'pending' | 'processing' | 'ready' | 'confirmed' | 'failed' | null
 
 export interface DocumentEntry {
     id:                number
@@ -23,6 +24,8 @@ export interface DocumentEntry {
     size_bytes:        number
     status:            DocumentStatus
     chunk_count:       number
+    embedded_chunks:   number
+    metadata_status:   MetadataStatus
     indexed_at:        string | null
     created_at:        string
 }

@@ -93,17 +93,25 @@ class DocumentSimilarity
     {
         $cfg = (array) config('knowledge.similarity', []);
 
-        if (! ($cfg['lexical_blend'] ?? true)) {
-            return "({$semantic})";
+        $floor = (float) ($cfg['floor'] ?? 0.83);
+        $ceil  = (float) ($cfg['ceil'] ?? 0.97);
+        $span  = max(0.01, $ceil - $floor);
+
+        // Calibrazione: rimappa il coseno [floor, ceil] su [0, 1] e azzera il
+        // pavimento di dominio. %F = float locale-independente (no virgola).
+        $calibrated = \sprintf('greatest(0, least(1, (%s - %F) / %F))', $semantic, $floor, $span);
+
+        if (! ($cfg['lexical_blend'] ?? false)) {
+            return $calibrated;
         }
 
+        // Opzionale: media geometrica pesata col lessicale (caccia ai duplicati).
         $ws = (float) ($cfg['semantic_weight'] ?? 0.5);
         $wl = (float) ($cfg['lexical_weight'] ?? 0.5);
 
-        // %F = formato float locale-independente (niente virgola decimale).
         return \sprintf(
             'power(greatest(%s, 0), %F) * power(greatest(%s, 0), %F)',
-            $semantic,
+            $calibrated,
             $ws,
             $lexical,
             $wl

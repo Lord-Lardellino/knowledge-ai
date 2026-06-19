@@ -47,6 +47,7 @@ class Document extends Model
         'status',
         'error',
         'chunk_count',
+        'embedded_chunks',
         'indexed_at',
         'metadata',
         'metadata_status',
@@ -57,6 +58,7 @@ class Document extends Model
     protected $casts = [
         'size_bytes'           => 'integer',
         'chunk_count'          => 'integer',
+        'embedded_chunks'      => 'integer',
         'indexed_at'           => 'datetime',
         'metadata'             => 'array',
         'metadata_reviewed_at' => 'datetime',

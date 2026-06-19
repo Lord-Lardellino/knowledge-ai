@@ -135,7 +135,8 @@ class DocumentController extends Controller
             ->latest()
             ->paginate(20, [
                 'id', 'title', 'original_filename', 'extension', 'mime_type',
-                'size_bytes', 'status', 'chunk_count', 'indexed_at', 'created_at',
+                'size_bytes', 'status', 'chunk_count', 'embedded_chunks',
+                'metadata_status', 'indexed_at', 'created_at',
             ]);
 
         return response()->json($documents);
@@ -148,7 +149,8 @@ class DocumentController extends Controller
             ->latest()
             ->get([
                 'id', 'title', 'original_filename', 'extension', 'mime_type',
-                'size_bytes', 'status', 'chunk_count', 'indexed_at', 'created_at',
+                'size_bytes', 'status', 'chunk_count', 'embedded_chunks',
+                'metadata_status', 'indexed_at', 'created_at',
             ])
             ->toArray();
     }
