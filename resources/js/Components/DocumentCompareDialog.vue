@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { fullscreenOverlay } from '@/stores/ui'
 
 interface DocumentOption {
     id: number
@@ -39,7 +40,8 @@ interface DiffHunk {
 interface AlignBlock {
     text: string
     kind: 'identical' | 'similar' | 'unique'
-    link: number | null
+    key: string
+    to: string | null
     topic: string | null
 }
 
@@ -91,28 +93,51 @@ const compareViews = [
     { label: 'Documenti', value: 'documents' },
 ]
 
-// Navigazione collegata: passaggio gemello evidenziato al passaggio dell'altro lato.
-const activeLink = ref<number | null>(null)
+// Navigazione collegata: solo il passaggio cliccato e il suo gemello.
+const activeKeys = ref<string[]>([])
 
-function focusLink (link: number | null): void {
-    if (link === null) return
-    activeLink.value = link
-    nextTick(() => {
-        // Scorre ogni colonna nel PROPRIO contenitore fino al passaggio collegato,
-        // così cliccando l'originale il documento confrontato va sul gemello (e viceversa).
-        document.querySelectorAll<HTMLElement>(`[data-link="${link}"]`).forEach((el) => {
-            const scroller = el.closest<HTMLElement>('.overflow-auto')
-            if (!scroller) return
-            const top = scroller.scrollTop
-                + el.getBoundingClientRect().top - scroller.getBoundingClientRect().top
-                - scroller.clientHeight / 2 + el.clientHeight / 2
-            scroller.scrollTo({ top, behavior: 'smooth' })
-        })
-    })
+// UX confronto a tutto schermo.
+const sidebarOpen = ref(true)       // colonna suggerimenti comprimibile
+const onlySimilar = ref(false)      // mostra solo i passaggi affini
+
+// Nasconde la chat flottante mentre il confronto è aperto.
+watch(() => props.visible, (v) => { fullscreenOverlay.value = v }, { immediate: true })
+
+// Coppie di passaggi affini, per il contatore e le frecce avanti/indietro.
+const pairs = computed(() => (result.value?.alignment.base ?? []).filter(b => b.kind !== 'unique' && b.to))
+const pairIndex = ref(0)
+
+watch(pairs, () => { pairIndex.value = 0 })
+
+function scrollToKey (key: string): void {
+    const el = document.querySelector<HTMLElement>(`[data-key="${key}"]`)
+    const scroller = el?.closest<HTMLElement>('.overflow-auto')
+    if (!el || !scroller) return
+    const top = scroller.scrollTop
+        + el.getBoundingClientRect().top - scroller.getBoundingClientRect().top
+        - scroller.clientHeight / 2 + el.clientHeight / 2
+    scroller.scrollTo({ top, behavior: 'smooth' })
+}
+
+function focusPair (block: AlignBlock): void {
+    if (!block.to) return
+    activeKeys.value = [block.key, block.to]
+    const i = pairs.value.findIndex(p => p.key === block.key)
+    if (i >= 0) pairIndex.value = i
+    nextTick(() => scrollToKey(block.to as string))
+}
+
+function gotoPair (delta: number): void {
+    const list = pairs.value
+    if (!list.length) return
+    pairIndex.value = (pairIndex.value + delta + list.length) % list.length
+    const b = list[pairIndex.value]
+    activeKeys.value = [b.key, b.to as string]
+    nextTick(() => { scrollToKey(b.key); scrollToKey(b.to as string) })
 }
 
 function blockClass (block: AlignBlock): string {
-    const active = block.link !== null && block.link === activeLink.value
+    const active = activeKeys.value.includes(block.key)
     if (block.kind === 'identical') {
         return (active ? 'ring-2 ring-emerald-400 ' : '') + 'bg-emerald-50 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-100 cursor-pointer'
     }
@@ -183,7 +208,7 @@ function reset(): void {
 function clearSelection(): void {
     selected.value = null
     result.value = null
-    activeLink.value = null
+    activeKeys.value = []
 }
 
 function close(): void {
@@ -330,9 +355,13 @@ function csrf(): string {
     <Dialog
         :visible="visible"
         modal
-        :style="{ width: '98vw', maxWidth: '1840px' }"
+        :style="{ width: '100vw', height: '100vh' }"
         :contentStyle="{ padding: '0' }"
-        :pt="{ header: { class: 'items-start' } }"
+        :pt="{
+            root: { class: 'rounded-none border-0 max-h-screen' },
+            header: { class: 'items-start' },
+            content: { class: 'flex min-h-0 flex-1 flex-col' },
+        }"
         @update:visible="emit('update:visible', $event)"
     >
         <template #header>
@@ -389,8 +418,8 @@ function csrf(): string {
             </div>
         </template>
 
-        <div class="grid h-[76vh] grid-cols-1 overflow-hidden lg:grid-cols-[330px_minmax(0,1fr)]">
-            <aside class="flex min-h-0 flex-col overflow-hidden border-b border-surface-200 bg-surface-50/70 p-3 dark:border-surface-800 dark:bg-surface-950 lg:border-b-0 lg:border-r">
+        <div class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden" :class="sidebarOpen ? 'lg:grid-cols-[360px_minmax(0,1fr)]' : 'lg:grid-cols-1'">
+            <aside v-show="sidebarOpen" class="flex min-h-0 flex-col overflow-hidden border-b border-surface-200 bg-surface-50/70 p-3 dark:border-surface-800 dark:bg-surface-950 lg:border-b-0 lg:border-r">
                 <div class="mb-3 flex items-start justify-between gap-2">
                     <div>
                         <p class="text-sm font-semibold text-surface-900 dark:text-surface-50">Documenti suggeriti</p>
@@ -458,13 +487,21 @@ function csrf(): string {
                 <div v-if="selected" class="flex h-full flex-col">
                     <div class="border-b border-surface-200 p-4 dark:border-surface-800">
                         <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div class="min-w-0">
+                            <div class="flex min-w-0 items-center gap-2">
+                                <Button
+                                    :icon="sidebarOpen ? 'pi pi-angle-double-left' : 'pi pi-angle-double-right'"
+                                    severity="secondary" text rounded
+                                    v-tooltip.bottom="sidebarOpen ? 'Nascondi suggerimenti' : 'Mostra suggerimenti'"
+                                    @click="sidebarOpen = !sidebarOpen"
+                                />
+                                <div class="min-w-0">
                                 <p class="truncate text-sm font-semibold text-surface-900 dark:text-surface-50">
                                     {{ baseDocument?.title }} / {{ selected.title }}
                                 </p>
                                 <p class="text-xs text-surface-500">
                                     {{ selected.matter?.title ?? 'Senza pratica' }} - {{ similarityLabel(selected.similarity) }} similarita
                                 </p>
+                                </div>
                             </div>
                             <div class="flex flex-wrap items-center gap-2">
                                 <SelectButton
@@ -488,11 +525,25 @@ function csrf(): string {
                             <Skeleton height="20rem" />
                         </div>
                         <template v-else-if="result">
-                            <div class="flex flex-wrap items-center gap-3 border-b border-surface-200 px-4 py-2 text-xs dark:border-surface-800">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-surface-200 px-4 py-2 text-xs dark:border-surface-800">
                                 <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-emerald-300 dark:bg-emerald-500/50" /> Stesso passaggio</span>
                                 <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-amber-300 dark:bg-amber-500/50" /> Stesso argomento</span>
-                                <span class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-surface-200 dark:bg-surface-700" /> Solo qui</span>
-                                <span class="ml-auto text-surface-500">Affinità per significato (per le parole uguali usa Git diff). Clicca un passaggio per saltare al gemello.</span>
+                                <span v-if="!onlySimilar" class="inline-flex items-center gap-1.5"><span class="size-3 rounded bg-surface-200 dark:bg-surface-700" /> Solo qui</span>
+
+                                <!-- Contatore corrispondenze + navigazione -->
+                                <div v-if="pairs.length" class="inline-flex items-center gap-1">
+                                    <Button icon="pi pi-chevron-left" severity="secondary" text rounded size="small" :disabled="!pairs.length" v-tooltip.bottom="'Precedente'" @click="gotoPair(-1)" />
+                                    <span class="min-w-16 text-center font-medium text-surface-600 dark:text-surface-300">{{ pairIndex + 1 }} / {{ pairs.length }}</span>
+                                    <Button icon="pi pi-chevron-right" severity="secondary" text rounded size="small" :disabled="!pairs.length" v-tooltip.bottom="'Successiva'" @click="gotoPair(1)" />
+                                    <span class="ml-1 text-surface-400">corrispondenze</span>
+                                </div>
+
+                                <div class="ml-auto flex items-center gap-3">
+                                    <span class="inline-flex items-center gap-2 text-surface-600 dark:text-surface-300">
+                                        <ToggleSwitch v-model="onlySimilar" /> Solo simili
+                                    </span>
+                                    <span class="hidden text-surface-400 lg:inline">Clicca un passaggio per saltare al gemello.</span>
+                                </div>
                             </div>
                             <div class="grid min-h-0 flex-1 grid-cols-1 overflow-hidden xl:grid-cols-2">
                                 <div class="flex min-h-0 flex-col border-b border-surface-200 dark:border-surface-800 xl:border-b-0 xl:border-r">
@@ -501,10 +552,11 @@ function csrf(): string {
                                         <div
                                             v-for="(block, i) in result.alignment.base"
                                             :key="`b-${i}`"
-                                            :data-link="block.link ?? undefined"
-                                            class="rounded-md px-2.5 py-1.5 text-sm leading-relaxed transition-shadow"
+                                            v-show="!onlySimilar || block.kind !== 'unique'"
+                                            :data-key="block.key"
+                                            class="rounded-md px-3 py-2 text-[0.95rem] leading-7 transition-shadow"
                                             :class="blockClass(block)"
-                                            @click="focusLink(block.link)"
+                                            @click="focusPair(block)"
                                         >
                                             <Tag v-if="block.topic && block.kind !== 'unique'" :value="block.topic" severity="warn" class="mb-1 text-[10px]" />
                                             <p class="m-0">{{ block.text }}</p>
@@ -517,10 +569,11 @@ function csrf(): string {
                                         <div
                                             v-for="(block, i) in result.alignment.target"
                                             :key="`t-${i}`"
-                                            :data-link="block.link ?? undefined"
-                                            class="rounded-md px-2.5 py-1.5 text-sm leading-relaxed transition-shadow"
+                                            v-show="!onlySimilar || block.kind !== 'unique'"
+                                            :data-key="block.key"
+                                            class="rounded-md px-3 py-2 text-[0.95rem] leading-7 transition-shadow"
                                             :class="blockClass(block)"
-                                            @click="focusLink(block.link)"
+                                            @click="focusPair(block)"
                                         >
                                             <Tag v-if="block.topic && block.kind !== 'unique'" :value="block.topic" severity="warn" class="mb-1 text-[10px]" />
                                             <p class="m-0">{{ block.text }}</p>

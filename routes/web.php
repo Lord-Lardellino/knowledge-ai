@@ -4,7 +4,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use LaravelWebauthn\Models\WebauthnKey;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\SearchController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\ClientController;
@@ -163,6 +165,15 @@ Route::middleware(['auth', 'security.headers', 'session.hardener', 'totp'])->gro
         Route::get('/documents/{document}/preview', [DocumentController::class, 'preview'])->withoutMiddleware(['security.headers'])->name('documents.preview');
         Route::get('/documents/{document}', [DocumentController::class, 'show'])->name('documents.show');
         Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
+
+        // Chat AI sui documenti (RAG con citazioni). Throttle: cap costi/abuso.
+        Route::post('/chat/ask', [ChatController::class, 'ask'])
+            ->middleware('throttle:20,1')
+            ->name('chat.ask');
+        Route::get('/chat/matters', [ChatController::class, 'matters'])->name('chat.matters');
+
+        // Ricerca generale rapida (appbar): documenti + pratiche + clienti.
+        Route::get('/search', [SearchController::class, 'global'])->name('search.global');
 
         // Team - gestione utenti e inviti (owner/admin)
         Route::get('/team',                [TeamController::class, 'page'])->name('team');

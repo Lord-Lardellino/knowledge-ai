@@ -77,38 +77,52 @@ class DocumentComparer
             ->orderBy('chunk_index')
             ->pluck('content', 'chunk_index');
 
-        $baseOut = [];
-        $targetMatch = []; // chunk_index target => dati del match
-        $link = 0;
-
-        foreach ($baseChunks as $row) {
+        // Abbinamento 1-a-1: ogni passaggio del target è usato una sola volta.
+        // Si assegnano prima le coppie più affini (greedy su similarità decrescente),
+        // così i conteggi restano simmetrici e ogni giallo ha un gemello esclusivo.
+        $candidates = [];
+        foreach ($baseChunks as $i => $row) {
             $sim = $row->sim !== null ? (float) $row->sim : null;
-            $kind = 'unique';
-            $thisLink = null;
-            $topic = null;
-
             if ($sim !== null && $sim >= self::SIM_SIMILAR) {
-                $kind = $sim >= self::SIM_IDENTICAL ? 'identical' : 'similar';
-                $thisLink = $link++;
-                $topic = $this->topicLabel((string) $row->b_content, (string) $row->t_content);
-                $targetMatch[$row->t_idx] = ['link' => $thisLink, 'kind' => $kind, 'topic' => $topic];
+                $candidates[] = ['i' => $i, 't' => (int) $row->t_idx, 'sim' => $sim];
+            }
+        }
+        usort($candidates, static fn ($a, $b) => $b['sim'] <=> $a['sim']);
+
+        $pairOf = [];      // indice base => ['t','kind']
+        $usedTarget = [];  // chunk_index target => indice base
+        foreach ($candidates as $c) {
+            if (isset($pairOf[$c['i']]) || isset($usedTarget[$c['t']])) {
+                continue; // base o target già abbinati
+            }
+            $pairOf[$c['i']] = ['t' => $c['t'], 'kind' => $c['sim'] >= self::SIM_IDENTICAL ? 'identical' : 'similar'];
+            $usedTarget[$c['t']] = $c['i'];
+        }
+
+        $baseOut = [];
+        $targetMeta = []; // chunk_index target => ['kind','topic','from' => chiave base]
+        foreach ($baseChunks as $i => $row) {
+            $key = 'b' . $i;
+            $pair = $pairOf[$i] ?? null;
+            $kind = $pair['kind'] ?? 'unique';
+            $to = $pair ? 't' . $pair['t'] : null;
+            $topic = $pair ? $this->topicLabel((string) $row->b_content, (string) $row->t_content) : null;
+
+            if ($pair) {
+                $targetMeta[$pair['t']] = ['kind' => $kind, 'topic' => $topic, 'from' => $key];
             }
 
-            $baseOut[] = [
-                'text'  => (string) $row->b_content,
-                'kind'  => $kind,
-                'link'  => $thisLink,
-                'topic' => $topic,
-            ];
+            $baseOut[] = ['text' => (string) $row->b_content, 'kind' => $kind, 'key' => $key, 'to' => $to, 'topic' => $topic];
         }
 
         $targetOut = [];
         foreach ($targetChunks as $idx => $content) {
-            $m = $targetMatch[$idx] ?? null;
+            $m = $targetMeta[$idx] ?? null;
             $targetOut[] = [
                 'text'  => (string) $content,
                 'kind'  => $m['kind'] ?? 'unique',
-                'link'  => $m['link'] ?? null,
+                'key'   => 't' . $idx,
+                'to'    => $m['from'] ?? null,
                 'topic' => $m['topic'] ?? null,
             ];
         }

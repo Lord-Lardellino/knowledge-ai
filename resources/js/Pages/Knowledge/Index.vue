@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head }            from '@inertiajs/vue3'
-import { computed, onUnmounted, watch } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useToast }        from 'primevue/usetoast'
 import { useConfirm }      from 'primevue/useconfirm'
 import AppLayout           from '@/Layouts/AppLayout.vue'
@@ -20,6 +20,24 @@ const toast   = useToast()
 const confirm = useConfirm()
 
 const { documents, uploading, error, upload, remove, reload } = useDocuments(props.initialDocuments)
+
+// Filtri lista documenti: nome + stato.
+const filterText = ref('')
+const filterStatus = ref<string | null>(null)
+const statusOptions = [
+    { label: 'In attesa',    value: 'pending' },
+    { label: 'Elaborazione', value: 'processing' },
+    { label: 'Indicizzato',  value: 'indexed' },
+    { label: 'Errore',       value: 'failed' },
+]
+const filteredDocuments = computed(() => {
+    const t = filterText.value.trim().toLowerCase()
+    return documents.value.filter((d) => {
+        const okText = !t || d.title.toLowerCase().includes(t)
+        const okStatus = !filterStatus.value || d.status === filterStatus.value
+        return okText && okStatus
+    })
+})
 
 // Real-time: aggiorna lo stato dei documenti in lista senza refresh.
 useTenantChannel(props.auth.tenant?.id, {
@@ -148,7 +166,16 @@ function formatDate (iso: string): string {
         <!-- Lista documenti -->
         <Card>
             <template #content>
-                <DataTable :value="documents" dataKey="id" :rows="10" paginator removableSort>
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                    <IconField class="max-w-xs grow">
+                        <InputIcon class="pi pi-search" />
+                        <InputText v-model="filterText" placeholder="Filtra per nome…" class="w-full" />
+                    </IconField>
+                    <Select v-model="filterStatus" :options="statusOptions" optionLabel="label" optionValue="value" placeholder="Tutti gli stati" showClear class="w-48" />
+                    <span class="ml-auto text-xs text-surface-500">{{ filteredDocuments.length }} di {{ documents.length }}</span>
+                </div>
+
+                <DataTable :value="filteredDocuments" dataKey="id" :rows="10" paginator removableSort>
                     <template #empty>
                         <div class="text-center py-10 text-surface-400">
                             <i class="pi pi-folder-open text-3xl mb-2 block" />

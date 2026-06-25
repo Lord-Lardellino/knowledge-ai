@@ -2,6 +2,8 @@
 import { computed, onMounted, ref } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useTenantChannel } from '@/composables/useTenantChannel'
+import ChatWidget from '@/Components/ChatWidget.vue'
+import GlobalSearch from '@/Components/GlobalSearch.vue'
 
 const props = defineProps<{
     auth: { user: { name: string; email: string }; tenant?: { id?: number; name: string } }
@@ -12,7 +14,6 @@ type NavItem = { label: string; icon: string; href?: string; soon?: boolean; mod
 const page = usePage()
 const drawerOpen = ref(false)
 const isDark = ref(true)
-const search = ref('')
 
 // Moduli attivi (condivisi via Inertia da AppServiceProvider).
 const modules = computed(() => (page.props.modules as Record<string, boolean> | undefined) ?? {})
@@ -91,12 +92,9 @@ onMounted(() => {
                 <span class="font-bold text-sm tracking-tight">Sapio</span>
                 <span class="text-xs text-surface-400 hidden sm:block">Knowledge AI</span>
             </div>
-            <!-- Center -->
+            <!-- Center: ricerca generale -->
             <div class="flex-1 flex justify-center">
-                <IconField class="w-full max-w-md">
-                    <InputIcon class="pi pi-search" />
-                    <InputText v-model="search" placeholder="Cerca documenti, chat, template…" class="w-full rounded-full" />
-                </IconField>
+                <GlobalSearch />
             </div>
             <!-- End -->
             <div class="flex items-center gap-1 shrink-0">
@@ -184,5 +182,8 @@ onMounted(() => {
 
         <Toast />
         <ConfirmDialog />
+
+        <!-- Assistente documenti (chat RAG) fisso in basso a destra -->
+        <ChatWidget />
     </div>
 </template>

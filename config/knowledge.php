@@ -108,6 +108,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Chat AI sui documenti (RAG con citazioni)
+    |--------------------------------------------------------------------------
+    | Recupera i chunk più pertinenti (pgvector) e li passa come contesto al
+    | modello, che risponde citando le fonti [n]. top_k = estratti nel contesto.
+    */
+    'chat' => [
+        // flash-lite = il modello più economico; thinkingBudget 0 azzera i token di
+        // ragionamento (la voce più cara). Contesto e output tenuti stretti.
+        'model'             => env('KNOWLEDGE_CHAT_MODEL', 'gemini-2.5-flash-lite'),
+        // Modello di ripiego quando il primario è sovraccarico (503). Vuoto = disattivo.
+        'fallback_model'    => env('KNOWLEDGE_CHAT_FALLBACK_MODEL', 'gemini-2.0-flash-lite'),
+        'top_k'             => (int) env('KNOWLEDGE_CHAT_TOP_K', 4),
+        'temperature'       => (float) env('KNOWLEDGE_CHAT_TEMPERATURE', 0.2),
+        'max_output_tokens' => (int) env('KNOWLEDGE_CHAT_MAX_OUTPUT_TOKENS', 600),
+        'thinking_budget'   => (int) env('KNOWLEDGE_CHAT_THINKING_BUDGET', 0),
+        // Caratteri massimi per estratto nel contesto (meno token in input).
+        'snippet_chars'     => (int) env('KNOWLEDGE_CHAT_SNIPPET_CHARS', 700),
+        // Storico massimo (turni) reimmesso nel prompt: meno = meno token.
+        'history_turns'     => (int) env('KNOWLEDGE_CHAT_HISTORY_TURNS', 4),
+        // Cache: stessa domanda sullo stesso archivio non ripaga il modello.
+        'cache_ttl'         => (int) env('KNOWLEDGE_CHAT_CACHE_TTL', 21600), // 6h
+        'embed_cache_ttl'   => (int) env('KNOWLEDGE_CHAT_EMBED_CACHE_TTL', 604800), // 7g
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Gemini API
     |--------------------------------------------------------------------------
     */
